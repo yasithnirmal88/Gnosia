@@ -1,7 +1,8 @@
 // Levi — Ship AI Voice System
 // Filenames match exactly: backend/src/main/resources/static/audio/levi/
 
-const BASE = '/audio/levi';
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/game-ws';
+const BASE = `${backendUrl.replace('/game-ws', '')}/audio/levi`;
 
 // ─── Lookup Tables ────────────────────────────────────────────────────────────
 
