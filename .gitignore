@@ -11,8 +11,8 @@ frontend/dist/
 frontend/.vite/
 
 # Audio (too large for GitHub — keep local only)
-backend/src/main/resources/static/audio/
-backend/src/main/resources/Levi/
+# backend/src/main/resources/static/audio/
+# backend/src/main/resources/Levi/
 
 # IDE
 .idea/

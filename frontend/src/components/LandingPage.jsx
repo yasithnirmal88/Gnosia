@@ -132,7 +132,7 @@ export default function LandingPage({ onPlay, onCreateRoom }) {
               ["STELLA", "#4ade80"],
             ].map(([name, col]) => (
               <div key={name} style={{ ...S.crewItem, borderColor: col + "40" }}>
-                <img src={`/images/${name.charAt(0)+name.slice(1).toLowerCase()}.png`}
+                <img src={`/images/${name === "SQ" ? "SQ" : name.charAt(0)+name.slice(1).toLowerCase()}.png`}
                      onError={e => { e.target.style.display="none"; }}
                      alt={name}
                      style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 2, filter: "brightness(.8)" }} />

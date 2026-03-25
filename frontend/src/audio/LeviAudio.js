@@ -35,10 +35,10 @@ const GNOSIA_FILES = {
 const ROLE_FILES = {
   'engineer':                       'Engineer.roles',
   'doctor':                         'doctor.roles',
-  'doctor,engineer':                'Engineer.doctor.roles',
-  'engineer,guardian_angel':        'Engineer.guardianangel.roles',
-  'doctor,guardian_angel':          'doctor.guardianangel.roles',
-  'doctor,engineer,guardian_angel': 'Engineer.doctor.guardianangel.roles',
+  'doctor,engineer':                'Engineer,doctor.roles',
+  'engineer,guardian_angel':        'Engineer,guardianangel.roles',
+  'doctor,guardian_angel':          'doctor,guardianangel.roles',
+  'doctor,engineer,guardian_angel': 'Engineer,doctor,guardianangel.roles',
 };
 
 // e.g. Jina.coldsleep.mp3

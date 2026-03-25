@@ -64,7 +64,7 @@ const App = () => {
     };
 
     useEffect(() => {
-        const savedRoom = localStorage.getItem('gonosia_room_code');
+        const savedRoom = localStorage.getItem('gnosia_room_code');
         if (savedRoom && !isJoined) {
             setRoomCodeInput(savedRoom);
         }
@@ -164,7 +164,7 @@ const App = () => {
 
     const currentPhase = room.gameState.phase;
     const isWarp = currentPhase === 'WARP';
-    const isGonosia = privateInfo?.role === 'GONOSIA';
+    const isGnosia = privateInfo?.role === 'GNOSIA';
     const isDead = room.players.find(p => p.id === playerId)?.alive === false;
 
     const NAME_MAP = {
@@ -175,10 +175,10 @@ const App = () => {
     };
 
     const isGameOver = currentPhase === 'GAME_OVER';
-    const isGonosiaWin = room.gameState.winner === 'GONOSIA';
+    const isGnosiaWin = room.gameState.winner === 'GNOSIA';
     const isHumanWin = room.gameState.winner === 'HUMAN';
     const containerClass = isGameOver 
-        ? (isGonosiaWin ? 'app-container gonosia-win' : 'app-container human-win') 
+        ? (isGnosiaWin ? 'app-container gnosia-win' : 'app-container human-win') 
         : `app-container ${isWarp ? 'warp-mode' : ''}`;
 
     return (
@@ -257,7 +257,7 @@ const App = () => {
                         )}
                     </AnimatePresence>
 
-                    {/* Action Panel Layer (Engineer, Doctor, Guardian Angel, Gonosia) */}
+                    {/* Action Panel Layer (Engineer, Doctor, Guardian Angel, Gnosia) */}
                     <AnimatePresence>
                         {(currentPhase === 'ROLE_ACTIONS' || currentPhase === 'WARP') && (
                             <ActionPanel 
@@ -266,13 +266,15 @@ const App = () => {
                                 players={room.players}
                                 lastCryoId={room.gameState.lastCryosleptPlayerId}
                                 actionResult={(privateInfo?.role === 'ENGINEER') ? scanResult?.result : ((privateInfo?.role === 'DOCTOR') ? doctorResult?.result : null)}
+                                privateInfo={privateInfo}
+                                myId={playerId}
                                 onAction={(id) => {
                                     if (currentPhase === 'ROLE_ACTIONS') {
                                         if (privateInfo?.role === 'ENGINEER') scan(id);
                                         if (privateInfo?.role === 'DOCTOR') doctorCheck(id);
                                         if (privateInfo?.role === 'GUARDIAN_ANGEL') protect(id);
                                     } else if (currentPhase === 'WARP') {
-                                        if (privateInfo?.role === 'GONOSIA') kill(id);
+                                        if (privateInfo?.role === 'GNOSIA') kill(id);
                                     }
                                 }}
                             />
@@ -306,7 +308,7 @@ const App = () => {
                                     if (isDead) return;
                                     if (currentPhase === 'VOTING') vote(player.id);
                                     if (currentPhase === 'ROLE_ACTIONS' && privateInfo?.role === 'ENGINEER') scan(player.id);
-                                    if (isWarp && isGonosia) kill(player.id);
+                                    if (isWarp && isGnosia) kill(player.id);
                                 }}
                             >
                                 <div className="card-suspect-stamp">SUSPECT</div>

@@ -20,7 +20,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   @Override
   public void registerStompEndpoints(StompEndpointRegistry registry) {
     registry.addEndpoint("/game-ws")
-            .setAllowedOriginPatterns("*")
+            .setAllowedOriginPatterns(
+                "http://localhost:5173",
+                "https://gnosia-frontend.onrender.com"
+            )
             .withSockJS();
   }
 }

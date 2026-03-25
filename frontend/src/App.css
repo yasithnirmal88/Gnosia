@@ -427,7 +427,7 @@
   background: rgba(102, 252, 241, 0.05);
 }
 
-.text-gonosia { color: var(--accent-gonosia); font-weight: bold; }
+.text-gnosia { color: var(--accent-gnosia); font-weight: bold; }
 .text-human { color: var(--accent-blue); font-weight: bold; }
 
 .badge-self {
@@ -500,7 +500,7 @@
   position: absolute;
   bottom: 5px;
   left: 5px;
-  background: var(--accent-gonosia);
+  background: var(--accent-gnosia);
   color: white;
   font-size: 0.6rem;
   padding: 2px 4px;
@@ -814,7 +814,7 @@
 
 .spectator-mode {
   font-size: 0.7rem;
-  color: var(--accent-gonosia);
+  color: var(--accent-gnosia);
   background: rgba(255, 77, 77, 0.1);
   padding: 2px 8px;
   border-radius: 10px;
@@ -849,7 +849,7 @@
   font-style: italic;
 }
 
-.gonosia-win {
+.gnosia-win {
   background-color: #1a0008 !important;
   background-image: radial-gradient(circle at center, rgba(255, 0, 64, 0.2) 0%, transparent 80%);
   border: 4px solid #ff0040;

@@ -29,16 +29,16 @@ public class GameLogicService {
 
         Collections.shuffle(players);
 
-        int gonosiaCount;
+        int gnosiaCount;
         List<Role> specialRoles = new ArrayList<>();
 
         if (playerCount <= 5) {
             // 3-5 players: 1 Gnosia, no special roles
-            gonosiaCount = 1;
+            gnosiaCount = 1;
 
         } else if (playerCount <= 10) {
             // 6-10 players: 2 Gnosia + one random "timeline" of special roles
-            gonosiaCount = 2;
+            gnosiaCount = 2;
             // 5 possible timelines, randomly selected each game
             int timeline = random.nextInt(5);
             switch (timeline) {
@@ -52,20 +52,20 @@ public class GameLogicService {
 
         } else {
             // 11-15 players: 3 Gnosia + all special roles
-            gonosiaCount = 3;
+            gnosiaCount = 3;
             specialRoles.add(Role.ENGINEER);
             specialRoles.add(Role.DOCTOR);
             specialRoles.add(Role.GUARDIAN_ANGEL);
         }
 
         // Allow config override for gonosiaCount
-        if (room.getConfig() != null && room.getConfig().getGonosiaCount() > 0) {
-            gonosiaCount = room.getConfig().getGonosiaCount();
+        if (room.getConfig() != null && room.getConfig().getGnosiaCount() > 0) {
+            gnosiaCount = room.getConfig().getGnosiaCount();
         }
 
         int index = 0;
-        for (int i = 0; i < gonosiaCount && index < playerCount; i++) {
-            players.get(index++).setRole(Role.GONOSIA);
+        for (int i = 0; i < gnosiaCount && index < playerCount; i++) {
+            players.get(index++).setRole(Role.GNOSIA);
         }
         for (Role role : specialRoles) {
             if (index < playerCount) players.get(index++).setRole(role);
@@ -77,7 +77,7 @@ public class GameLogicService {
         // Final shuffle so roles are hidden
         Collections.shuffle(players);
         log.info("[ROLES] Assigned {} Gnosia, special roles: {} for {} players",
-                gonosiaCount, specialRoles, playerCount);
+                gnosiaCount, specialRoles, playerCount);
     }
 
     public String resolveVoting(Room room) {
@@ -104,19 +104,19 @@ public class GameLogicService {
                 .filter(Player::isAlive)
                 .collect(Collectors.toList());
         
-        long gonosiaCount = alivePlayers.stream().filter(p -> p.getRole() == Role.GONOSIA).count();
-        long humansCount = alivePlayers.size() - gonosiaCount;
+        long gnosiaCount = alivePlayers.stream().filter(p -> p.getRole() == Role.GNOSIA).count();
+        long humansCount = alivePlayers.size() - gnosiaCount;
         
-        if (gonosiaCount == 0) {
+        if (gnosiaCount == 0) {
             log.info("Humans win in room " + room.getRoomCode());
             room.getGameState().setWinner(Role.HUMAN);
             return Role.HUMAN; 
         }
         
-        if (gonosiaCount >= humansCount) {
-            log.info("Gonosia win in room " + room.getRoomCode());
-            room.getGameState().setWinner(Role.GONOSIA);
-            return Role.GONOSIA;
+        if (gnosiaCount >= humansCount) {
+            log.info("Gnosia win in room " + room.getRoomCode());
+            room.getGameState().setWinner(Role.GNOSIA);
+            return Role.GNOSIA;
         }
         
         return null; // Game continues

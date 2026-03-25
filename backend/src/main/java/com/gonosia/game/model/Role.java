@@ -2,7 +2,7 @@ package com.gonosia.game.model;
 
 public enum Role {
     HUMAN,
-    GONOSIA,
+    GNOSIA,
     ENGINEER,
     DOCTOR,
     GUARDIAN_ANGEL

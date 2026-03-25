@@ -1,7 +1,7 @@
-# Gonosia: Intergalactic Deduction Game
+# Gnosia: Intergalactic Deduction Game
 
-Gonosia is a real-time multiplayer social deduction game set on a spaceship. 
-Identify the infected (Gonosia) before they eliminate the crew!
+Gnosia is a real-time multiplayer social deduction game set on a spaceship. 
+Identify the infected (Gnosia) before they eliminate the crew!
 
 ## 🚀 Getting Started
 

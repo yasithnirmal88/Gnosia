@@ -36,24 +36,24 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
   const [dmOpen, setDmOpen] = useState(false);
   const [dmHistory, setDmHistory] = useState({});
   const [dmInput, setDmInput] = useState("");
-  const [warpCouncilTarget, setWarpCouncilTarget] = useState(null); // Gonosia's chosen victim
+  const [warpCouncilTarget, setWarpCouncilTarget] = useState(null); // Gnosia's chosen victim
   const dmRef = useRef(null);
 
   const isWarpPhase = currentPhase === 'WARP';
-  const isGonosia = role === 'GONOSIA';
+  const isGnosia = role === 'GNOSIA';
   const me = players.find(p => p.name === playerName);
   const amIDead = me?.alive === false; // true if cryoslept OR killed
   const isSpectator = amIDead; // alias for audio logic
 
   // WARP audio: only alive Gonosia can hear Gonosia. Dead players hear nothing.
-  const isSystemMuted = amIDead || (isWarpPhase && !isGonosia);
+  const isSystemMuted = amIDead || (isWarpPhase && !isGnosia);
   const finalMuted = localMuted || isSystemMuted;
 
   const canHear = (p) => {
     if (!p.alive) return false;
     if (isWarpPhase) {
-      // During WARP, Gonosia can only hear fellow Gonosia
-      return isGonosia && (p.role === 'GONOSIA' || p.self);
+      // During WARP, Gnosia can only hear fellow Gnosia
+      return isGnosia && (p.role === 'GNOSIA' || p.self || (privateInfo?.partners?.includes(p.id)));
     }
     return true; // During DISCUSSION all alive players can hear each other
   };
@@ -63,7 +63,8 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
   }, [dmHistory, dmTarget]);
 
   const votes = room?.gameState?.currentVotes || {};
-  const hasGonosia = currentPhase !== 'GAME_OVER' || room?.gameState?.winner !== 'HUMAN';
+  const votingResults = room?.gameState?.votingResults || {};
+  const hasGnosia = currentPhase !== 'GAME_OVER' || room?.gameState?.winner !== 'HUMAN';
 
   const handleVoteConfirm = () => {
     if (!confirmModal) return;
@@ -150,7 +151,7 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             background: linear-gradient(to right, rgba(0,8,24,0.6) 0%, rgba(0,8,24,0.1) 40%, rgba(0,8,24,0.7) 100%);
         }
 
-        .gonosia-detector-bar {
+        .gnosia-detector-bar {
             position: absolute;
             bottom: 0;
             left: 0;
@@ -159,8 +160,22 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             z-index: 10;
         }
 
-        .gonosia-detector-bar.active { background: #ff0040; box-shadow: 0 0 10px #ff0040; }
-        .gonosia-detector-bar.clear { background: #00d26a; box-shadow: 0 0 10px #00d26a; }
+        .gnosia-detector-bar.active { background: #ff0040; box-shadow: 0 0 10px #ff0040; }
+        .gnosia-detector-bar.clear { background: #00d26a; box-shadow: 0 0 10px #00d26a; }
+
+        .vote-cast-tag {
+            position: absolute;
+            bottom: 40px;
+            right: 10px;
+            background: rgba(0,0,0,0.85);
+            border: 1px solid #ff4444;
+            color: #ff4444;
+            padding: 2px 6px;
+            font-size: 8px;
+            z-index: 20;
+            border-radius: 2px;
+            font-weight: bold;
+        }
 
         .vote-counter {
             position: absolute;
@@ -174,6 +189,26 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             font-family: 'Orbitron', sans-serif;
             font-weight: 900;
             z-index: 10;
+        }
+
+        .kill-strike {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(45deg, transparent 45%, #ff0000 48%, #ff0000 52%, transparent 55%);
+            background-size: 100% 100%;
+            z-index: 15;
+            opacity: 0.8;
+            pointer-events: none;
+            filter: drop-shadow(0 0 5px #000);
+        }
+
+        .kill-strike-2 {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(-45deg, transparent 45%, #ff0000 48%, #ff0000 52%, transparent 55%);
+            z-index: 15;
+            opacity: 0.8;
+            pointer-events: none;
         }
 
         .crew-card:hover:not(.locked) {
@@ -222,7 +257,7 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             z-index: 10;
         }
         
-        .role-icon.gonosia {
+        .role-icon.gnosia {
             border: 1px solid #ff0040;
             box-shadow: 0 0 8px #ff0040;
         }
@@ -421,7 +456,18 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             letter-spacing: 2px;
         }
 
-        /* === WARP COUNCIL (Gonosia secret meeting) === */
+        .warp-timer {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            font-family: 'Orbitron', sans-serif;
+            color: #ff00ff;
+            font-size: 24px;
+            text-shadow: 0 0 10px #ff00ff;
+            z-index: 7000;
+        }
+ 
+        /* === WARP COUNCIL (Gnosia secret meeting) === */
         .warp-council-overlay {
             position: fixed;
             inset: 0;
@@ -557,6 +603,16 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             justify-content: center;
             font-family: 'Orbitron', sans-serif;
         }
+ 
+        .icy-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 255, 255, 0.2);
+            backdrop-filter: blur(1px) saturate(0.5);
+            z-index: 14;
+            pointer-events: none;
+            border: 2px solid #00ffff;
+        }
 
         .cryo-rings {
             position: relative;
@@ -605,9 +661,25 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             line-height: 2;
         }
 
+        .icy-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 255, 255, 0.2);
+            backdrop-filter: blur(1px) saturate(0.5);
+            z-index: 14;
+            pointer-events: none;
+            border: 2px solid #00ffff;
+        }
+
       `}</style>
 
       <div className="scanline" />
+      
+      {currentPhase === 'WARP' && room?.gameState?.remainingTimeSeconds > 0 && (
+          <div className="warp-timer">
+              {Math.floor(room.gameState.remainingTimeSeconds / 60)}:{(room.gameState.remainingTimeSeconds % 60).toString().padStart(2, '0')}
+          </div>
+      )}
 
       {/* HEADER SECTION */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '10px 40px', marginTop: '10px' }}>
@@ -625,7 +697,7 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
           const votesForThisPlayer = Object.values(votes).filter(id => id === p.id).length;
           
           const isMe = p.id === playerId;
-          const isPartner = privateInfo?.role === 'GONOSIA' && privateInfo?.partners?.includes(p.id);
+          const isPartner = privateInfo?.role === 'GNOSIA' && privateInfo?.partners?.includes(p.id);
 
           let roleIcon = null;
           let iconClass = 'role-icon';
@@ -633,11 +705,11 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
              if (privateInfo?.role === 'ENGINEER') roleIcon = '🔎';
              if (privateInfo?.role === 'DOCTOR') roleIcon = '🩺';
              if (privateInfo?.role === 'GUARDIAN_ANGEL') roleIcon = '👼';
-             if (privateInfo?.role === 'GONOSIA') { roleIcon = '🐺'; iconClass += ' gonosia'; }
-          } else if (isPartner) {
-             roleIcon = '🐺';
-             iconClass += ' gonosia';
-          }
+             if (privateInfo?.role === 'GNOSIA') { roleIcon = '🐺'; iconClass += ' gnosia'; }
+           } else if (isPartner) {
+              roleIcon = '🐺';
+              iconClass += ' gnosia';
+           }
 
           const cardStateClass = p.cryoslept ? 'frozen' : (!p.alive ? 'killed' : '');
           
@@ -660,14 +732,29 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
                   <div className={iconClass}>{roleIcon}</div>
               )}
               
+              {p.cryoslept && <div className="icy-overlay" />}
+              {(!p.alive && !p.cryoslept) && (
+                  <>
+                    <div className="kill-strike" />
+                    <div className="kill-strike-2" />
+                  </>
+              )}
+              
                 {/* Voting Indicators */}
                 {room?.gameState?.phase === 'CRYOSLEEP' && votesForThisPlayer > 0 && (
                     <div className="vote-counter">{votesForThisPlayer}</div>
                 )}
+
+                {/* Show who each person voted for during CRYOSLEEP reveal */}
+                {room?.gameState?.phase === 'CRYOSLEEP' && votingResults[p.id] && (
+                    <div className="vote-cast-tag">
+                        VOTED: {players.find(target => target.id === votingResults[p.id])?.name || "???"}
+                    </div>
+                )}
                 
-                {/* Gonosia Detection Bar */}
+                {/* Gnosia Detection Bar */}
                 {isMe && (
-                    <div className={`gonosia-detector-bar ${hasGonosia ? 'active' : 'clear'}`} />
+                    <div className={`gnosia-detector-bar ${hasGnosia ? 'active' : 'clear'}`} />
                 )}
 
               <div className="suspect-tag">SUSPECT</div>
@@ -806,14 +893,14 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
         </div>
       )}
 
-      {/* ===== WARP PHASE — GONOSIA COUNCIL (alive Gonosia only) ===== */}
-      {isWarpPhase && isGonosia && !amIDead && (
+      {/* ===== WARP PHASE — GNOSIA COUNCIL (alive Gnosia only) ===== */}
+      {isWarpPhase && isGnosia && !amIDead && (
         <div className="warp-council-overlay">
           <div className="warp-council-title">⚠ WARP COUNCIL</div>
-          <div className="warp-council-sub">— ENCRYPTED TRANSMISSION — GONOSIA EYES ONLY —</div>
+          <div className="warp-council-sub">— ENCRYPTED TRANSMISSION — GNOSIA EYES ONLY —</div>
 
           <div className="warp-council-grid">
-            {players.filter(p => p.alive && p.role !== 'GONOSIA').map(p => (
+            {players.filter(p => p.alive && p.id !== playerId && !privateInfo?.partners?.includes(p.id)).map(p => (
               <div
                 key={p.id}
                 className={`warp-target-card ${warpCouncilTarget?.id === p.id ? 'warp-selected' : ''}`}
@@ -845,19 +932,19 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
 
           <div className="warp-vote-status">
             {warpCouncilTarget
-              ? `YOUR VOTE CAST — AWAITING CONSENSUS FROM ALL GONOSIA MEMBERS`
-              : `SELECT A HUMAN TO ELIMINATE — ALL GONOSIA MUST AGREE`}
+              ? `YOUR VOTE CAST — AWAITING CONSENSUS FROM ALL GNOSIA MEMBERS`
+              : `SELECT A HUMAN TO ELIMINATE — ALL GNOSIA MUST AGREE`}
           </div>
 
-          {/* Audio nodes — alive Gonosia can hear each other during WARP */}
-          {players.filter(p => p.alive && p.role === 'GONOSIA' && !p.self && streams[p.id]).map(p => (
+          {/* Audio nodes — alive Gnosia can hear each other during WARP */}
+          {players.filter(p => p.alive && (p.role === 'GNOSIA' || privateInfo?.partners?.includes(p.id)) && !p.self && streams[p.id]).map(p => (
             <AudioNode key={p.id} stream={streams[p.id]} isLocal={false} volume={globalVolume} muted={finalMuted} />
           ))}
         </div>
       )}
 
-      {/* ===== WARP PHASE — CRYO-SLEEP (alive non-Gonosia) ===== */}
-      {isWarpPhase && (!isGonosia || amIDead) && !amIDead && (
+      {/* ===== WARP PHASE — CRYO-SLEEP (alive non-Gnosia) ===== */}
+      {isWarpPhase && (!isGnosia || amIDead) && !amIDead && (
         <div className="cryo-sleep-overlay">
           <div className="cryo-rings">
             <div className="cryo-ring" />

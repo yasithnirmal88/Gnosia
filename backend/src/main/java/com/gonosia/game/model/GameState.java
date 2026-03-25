@@ -11,22 +11,23 @@ public class GameState {
     private Map<String, String> currentVotes = new HashMap<>(); // SourcePlayerID -> TargetPlayerID
     private String lastCryosleptPlayerId;
     private String protectedPlayerId;
-    private String gonosiaTargetPlayerId;
+    private String gnosiaTargetPlayerId;
     private Map<String, String> lastRoleResults = new HashMap<>(); // PlayerID -> Results
     private List<String> leviObservations = new ArrayList<>(); // AI Narrator's insights
     private Map<String, List<String>> behavioralInsights = new HashMap<>(); // e.g., "Frequent Partners" -> List of IDs
-    private Map<String, String> gonosiaVotes = new HashMap<>(); // GonosiaID -> TargetID (WARP phase consensus)
-    private Role winner; // To store the game winner (HUMAN or GONOSIA)
+    private Map<String, String> gnosiaVotes = new HashMap<>(); // GnosiaID -> TargetID (WARP phase consensus)
+    private Map<String, String> votingResults = new HashMap<>(); // VoterID -> TargetID (revealed results)
+    private Role winner; // To store the game winner (HUMAN or GNOSIA)
 
     public GameState() {}
 
-    public GameState(Phase phase, int remainingTimeSeconds, Map<String, String> currentVotes, String lastCryosleptPlayerId, String protectedPlayerId, String gonosiaTargetPlayerId, Map<String, String> lastRoleResults, List<String> leviObservations, Map<String, List<String>> behavioralInsights) {
+    public GameState(Phase phase, int remainingTimeSeconds, Map<String, String> currentVotes, String lastCryosleptPlayerId, String protectedPlayerId, String gnosiaTargetPlayerId, Map<String, String> lastRoleResults, List<String> leviObservations, Map<String, List<String>> behavioralInsights) {
         this.phase = phase;
         this.remainingTimeSeconds = remainingTimeSeconds;
         this.currentVotes = currentVotes;
         this.lastCryosleptPlayerId = lastCryosleptPlayerId;
         this.protectedPlayerId = protectedPlayerId;
-        this.gonosiaTargetPlayerId = gonosiaTargetPlayerId;
+        this.gnosiaTargetPlayerId = gnosiaTargetPlayerId;
         this.lastRoleResults = lastRoleResults;
         this.leviObservations = leviObservations;
         this.behavioralInsights = behavioralInsights;
@@ -56,8 +57,8 @@ public class GameState {
     public String getProtectedPlayerId() { return protectedPlayerId; }
     public void setProtectedPlayerId(String protectedPlayerId) { this.protectedPlayerId = protectedPlayerId; }
 
-    public String getGonosiaTargetPlayerId() { return gonosiaTargetPlayerId; }
-    public void setGonosiaTargetPlayerId(String gonosiaTargetPlayerId) { this.gonosiaTargetPlayerId = gonosiaTargetPlayerId; }
+    public String getGnosiaTargetPlayerId() { return gnosiaTargetPlayerId; }
+    public void setGnosiaTargetPlayerId(String gnosiaTargetPlayerId) { this.gnosiaTargetPlayerId = gnosiaTargetPlayerId; }
 
     public Map<String, String> getLastRoleResults() { return lastRoleResults; }
     public void setLastRoleResults(Map<String, String> lastRoleResults) { this.lastRoleResults = lastRoleResults; }
@@ -68,9 +69,12 @@ public class GameState {
     public Map<String, List<String>> getBehavioralInsights() { return behavioralInsights; }
     public void setBehavioralInsights(Map<String, List<String>> behavioralInsights) { this.behavioralInsights = behavioralInsights; }
 
-    public Map<String, String> getGonosiaVotes() { return gonosiaVotes; }
-    public void setGonosiaVotes(Map<String, String> gonosiaVotes) { this.gonosiaVotes = gonosiaVotes; }
-    public void clearGonosiaVotes() { this.gonosiaVotes = new HashMap<>(); }
+    public Map<String, String> getGnosiaVotes() { return gnosiaVotes; }
+    public void setGnosiaVotes(Map<String, String> gnosiaVotes) { this.gnosiaVotes = gnosiaVotes; }
+    public void clearGnosiaVotes() { this.gnosiaVotes = new HashMap<>(); }
+
+    public Map<String, String> getVotingResults() { return votingResults; }
+    public void setVotingResults(Map<String, String> votingResults) { this.votingResults = votingResults; }
     
     public Role getWinner() { return winner; }
     public void setWinner(Role winner) { this.winner = winner; }
@@ -83,7 +87,7 @@ public class GameState {
         private Map<String, String> currentVotes;
         private String lastCryosleptPlayerId;
         private String protectedPlayerId;
-        private String gonosiaTargetPlayerId;
+        private String gnosiaTargetPlayerId;
         private Map<String, String> lastRoleResults;
         private List<String> leviObservations;
         private Map<String, List<String>> behavioralInsights;
@@ -93,13 +97,13 @@ public class GameState {
         public GameStateBuilder currentVotes(Map<String, String> currentVotes) { this.currentVotes = currentVotes; return this; }
         public GameStateBuilder lastCryosleptPlayerId(String lastCryosleptPlayerId) { this.lastCryosleptPlayerId = lastCryosleptPlayerId; return this; }
         public GameStateBuilder protectedPlayerId(String protectedPlayerId) { this.protectedPlayerId = protectedPlayerId; return this; }
-        public GameStateBuilder gonosiaTargetPlayerId(String gonosiaTargetPlayerId) { this.gonosiaTargetPlayerId = gonosiaTargetPlayerId; return this; }
+        public GameStateBuilder gnosiaTargetPlayerId(String gnosiaTargetPlayerId) { this.gnosiaTargetPlayerId = gnosiaTargetPlayerId; return this; }
         public GameStateBuilder lastRoleResults(Map<String, String> lastRoleResults) { this.lastRoleResults = lastRoleResults; return this; }
         public GameStateBuilder leviObservations(List<String> leviObservations) { this.leviObservations = leviObservations; return this; }
         public GameStateBuilder behavioralInsights(Map<String, List<String>> behavioralInsights) { this.behavioralInsights = behavioralInsights; return this; }
 
         public GameState build() {
-            return new GameState(phase, remainingTimeSeconds, currentVotes, lastCryosleptPlayerId, protectedPlayerId, gonosiaTargetPlayerId, lastRoleResults, leviObservations, behavioralInsights);
+            return new GameState(phase, remainingTimeSeconds, currentVotes, lastCryosleptPlayerId, protectedPlayerId, gnosiaTargetPlayerId, lastRoleResults, leviObservations, behavioralInsights);
         }
     }
 }

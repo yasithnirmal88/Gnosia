@@ -47,8 +47,8 @@ public class Player {
     public boolean isConnected() { return isConnected; }
     public void setConnected(boolean connected) { isConnected = connected; }
 
-    public boolean isGonosia() {
-        return this.role == Role.GONOSIA;
+    public boolean isGnosia() {
+        return this.role == Role.GNOSIA;
     }
 
     public static PlayerBuilder builder() { return new PlayerBuilder(); }

@@ -30,11 +30,11 @@ public class ChatController {
         if (sender == null || !sender.isAlive()) return;
 
         if (currentPhase == Phase.WARP) {
-            // Only Gonosia can chat in Warp
-            if (sender.getRole() == Role.GONOSIA) {
-                // Broadcast to each Gonosia privately
+            // Only Gnosia can chat in Warp
+            if (sender.getRole() == Role.GNOSIA) {
+                // Broadcast to each Gnosia privately
                 room.getPlayers().stream()
-                        .filter(p -> p.getRole() == Role.GONOSIA)
+                        .filter(p -> p.getRole() == Role.GNOSIA)
                         .forEach(p -> {
                             messagingTemplate.convertAndSendToUser(p.getId(), "/queue/private", 
                                 Map.of("type", "WARP_CHAT", "message", message));

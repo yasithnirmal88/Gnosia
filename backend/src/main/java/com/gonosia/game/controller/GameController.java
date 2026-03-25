@@ -27,7 +27,7 @@ public class GameController {
         this.gameService = gameService;
     }
 
-    private final String[] GONOSIA_CHARACTERS = {
+    private final String[] GNOSIA_CHARACTERS = {
         "Setsu", "Jina", "SQ", "Raqio", "Stella", 
         "Shigemichi", "Chipie", "Comet", "Jonas", 
         "Kukurushka", "Otome", "Sha-ming", "Remnan", 
@@ -40,7 +40,7 @@ public class GameController {
         Room room = roomManager.createRoom(request.getRoomCode(), request.getParticipants(), request.getPin());
         Player player = new Player();
         player.setId(request.getPlayerId());
-        String randomName = GONOSIA_CHARACTERS[random.nextInt(GONOSIA_CHARACTERS.length)];
+        String randomName = GNOSIA_CHARACTERS[random.nextInt(GNOSIA_CHARACTERS.length)];
         player.setName(randomName);
         player.setAvatar("/images/" + randomName + ".png");
         player.setConnected(true);
@@ -75,7 +75,7 @@ public class GameController {
                 return;
             }
 
-            List<String> availableNames = new java.util.ArrayList<>(java.util.Arrays.asList(GONOSIA_CHARACTERS));
+            List<String> availableNames = new java.util.ArrayList<>(java.util.Arrays.asList(GNOSIA_CHARACTERS));
             room.getPlayers().forEach(p -> availableNames.remove(p.getName()));
             if (availableNames.isEmpty()) {
                 availableNames.add("UnknownVessel" + random.nextInt(1000));
@@ -129,7 +129,7 @@ public class GameController {
             Player scanner = room.getPlayer(payload.get("scannerId"));
             Player target = room.getPlayer(payload.get("targetId"));
             if (scanner != null && scanner.isAlive() && target != null && scanner.getRole() == Role.ENGINEER) {
-                String result = target.getRole() == Role.GONOSIA ? "GONOSIA" : "HUMAN";
+                String result = target.getRole() == Role.GNOSIA ? "GNOSIA" : "HUMAN";
                 messagingTemplate.convertAndSend("/topic/user/" + scanner.getId() + "/private", 
                     Map.of("type", "SCAN_RESULT", "targetId", target.getId(), "result", result));
             }
@@ -144,7 +144,7 @@ public class GameController {
             String targetId = room.getGameState().getLastCryosleptPlayerId();
             Player target = room.getPlayer(targetId);
             if (doctor != null && doctor.isAlive() && doctor.getRole() == Role.DOCTOR && target != null) {
-                String result = target.getRole() == Role.GONOSIA ? "GONOSIA" : "HUMAN";
+                String result = target.getRole() == Role.GNOSIA ? "GNOSIA" : "HUMAN";
                 messagingTemplate.convertAndSend("/topic/user/" + doctor.getId() + "/private", 
                     Map.of("type", "DOCTOR_CHECK_RESULT", "targetId", target.getId(), "result", result));
             }
@@ -167,37 +167,37 @@ public class GameController {
         Room room = roomManager.getRoom(roomCode);
         if (room == null || room.getGameState().getPhase() != Phase.WARP) return;
 
-        Player gonosia = room.getPlayer(payload.get("voterId"));
-        if (gonosia == null || !gonosia.isAlive() || gonosia.getRole() != Role.GONOSIA) return;
+        Player gnosia = room.getPlayer(payload.get("voterId"));
+        if (gnosia == null || !gnosia.isAlive() || gnosia.getRole() != Role.GNOSIA) return;
 
         String targetId = payload.get("targetId");
         Player target = room.getPlayer(targetId);
 
-        if (target == null || !target.isAlive() || target.getRole() == Role.GONOSIA) {
-            log.warn("[WARP] Invalid kill target '{}' by {}. Must be an alive non-Gonosia player.", targetId, gonosia.getName());
+        if (target == null || !target.isAlive() || target.getRole() == Role.GNOSIA) {
+            log.warn("[WARP] Invalid kill target '{}' by {}. Must be an alive non-Gnosia player.", targetId, gnosia.getName());
             return;
         }
 
         GameState state = room.getGameState();
-        state.getGonosiaVotes().put(gonosia.getId(), targetId);
-        log.info("[WARP] {} voted to kill: {}", gonosia.getName(), target.getName());
+        state.getGnosiaVotes().put(gnosia.getId(), targetId);
+        log.info("[WARP] {} voted to kill: {}", gnosia.getName(), target.getName());
 
-        // Check for full consensus among all alive Gonosia
-        List<Player> aliveGonosia = room.getPlayers().stream()
-                .filter(p -> p.isAlive() && p.getRole() == Role.GONOSIA)
+        // Check for full consensus among all alive Gnosia
+        List<Player> aliveGnosia = room.getPlayers().stream()
+                .filter(p -> p.isAlive() && p.getRole() == Role.GNOSIA)
                 .collect(java.util.stream.Collectors.toList());
 
-        long agreeCount = aliveGonosia.stream()
-                .filter(g -> targetId.equals(state.getGonosiaVotes().get(g.getId())))
+        long agreeCount = aliveGnosia.stream()
+                .filter(g -> targetId.equals(state.getGnosiaVotes().get(g.getId())))
                 .count();
 
-        if (agreeCount == aliveGonosia.size() && !aliveGonosia.isEmpty()) {
-            state.setGonosiaTargetPlayerId(targetId);
-            log.info("[WARP] CONSENSUS reached. All {} Gonosia selected: {}", aliveGonosia.size(), target.getName());
+        if (agreeCount == aliveGnosia.size() && !aliveGnosia.isEmpty()) {
+            state.setGnosiaTargetPlayerId(targetId);
+            log.info("[WARP] CONSENSUS reached. All {} Gnosia selected: {}", aliveGnosia.size(), target.getName());
             messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
-                Map.of("type", "GONOSIA_CONSENSUS", "targetId", targetId, "targetName", target.getName()));
+                Map.of("type", "GNOSIA_CONSENSUS", "targetId", targetId, "targetName", target.getName()));
         } else {
-            log.info("[WARP] {}/{} Gonosia voted for {}.", agreeCount, aliveGonosia.size(), target.getName());
+            log.info("[WARP] {}/{} Gnosia voted for {}.", agreeCount, aliveGnosia.size(), target.getName());
         }
 
         gameService.broadcastState(room);

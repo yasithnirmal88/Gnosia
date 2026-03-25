@@ -2,12 +2,10 @@ package com.gonosia.game.model;
 
 public class GameConfig {
     private int maxPlayers = 15;
-    private int gonosiaCount = 0; // 0 means auto
+    private int gnosiaCount = 0; // 0 means auto
 
-    // TEST: short timers
-    private static final int[] DISCUSSION_TIMES = { 0, 20, 20, 20, 20 };
-
-    private int votingTimeSeconds = 30;
+    private static final int[] DISCUSSION_TIMES = { 0, 300, 600, 600, 600 };
+    private int votingTimeSeconds = 60;
     private int resultTimeSeconds = 15;
     private int roleActionTimeSeconds = 60;
     private int warpTimeSeconds = 120;
@@ -31,8 +29,8 @@ public class GameConfig {
     public int getMaxPlayers() { return maxPlayers; }
     public void setMaxPlayers(int maxPlayers) { this.maxPlayers = maxPlayers; }
 
-    public int getGonosiaCount() { return gonosiaCount; }
-    public void setGonosiaCount(int gonosiaCount) { this.gonosiaCount = gonosiaCount; }
+    public int getGnosiaCount() { return gnosiaCount; }
+    public void setGnosiaCount(int gnosiaCount) { this.gnosiaCount = gnosiaCount; }
 
     public int getVotingTimeSeconds() { return votingTimeSeconds; }
     public void setVotingTimeSeconds(int votingTimeSeconds) { this.votingTimeSeconds = votingTimeSeconds; }

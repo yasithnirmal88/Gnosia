@@ -15,8 +15,11 @@ export const useGame = (initialRoomCode) => {
   const [doctorResult, setDoctorResult] = useState(null);
   const [joinError, setJoinError] = useState(null);
   const [playerId] = useState(() => {
-    // TEST OVERRIDE: unique ID per tab
-    return crypto.randomUUID();
+    const stored = localStorage.getItem('gnosia_player_id');
+    if (stored) return stored;
+    const newId = crypto.randomUUID();
+    localStorage.setItem('gnosia_player_id', newId);
+    return newId;
   });
 
   const stompClient = useRef(null);
@@ -44,7 +47,7 @@ export const useGame = (initialRoomCode) => {
     });
 
     client.onConnect = () => {
-      console.log('[Gonosia] Connected to STOMP broker');
+      console.log('[Gnosia] Connected to STOMP broker');
 
       // ─── Centralized Player-Private Service ───
       // Subscribing once here handles room-creation, role-info, results, and signaling
@@ -100,7 +103,7 @@ export const useGame = (initialRoomCode) => {
   const subscribeToState = (code, clientArg, pin) => {
     const client = clientArg || stompClient.current;
     if (!client || !client.connected) {
-      console.warn('[Gonosia] Cannot subscribe, STOMP not connected');
+      console.warn('[Gnosia] Cannot subscribe, STOMP not connected');
       return;
     }
 
@@ -131,7 +134,7 @@ export const useGame = (initialRoomCode) => {
       }
     });
 
-    localStorage.setItem('gonosia_room_code', code);
+    localStorage.setItem('gnosia_room_code', code);
 
     // Join with ID and optional PIN
     client.publish({
@@ -160,7 +163,7 @@ export const useGame = (initialRoomCode) => {
       setStreams(prev => ({ ...prev, local: stream }));
       return stream;
     } catch (err) {
-      console.error('[Gonosia] Media access error:', err);
+      console.error('[Gnosia] Media access error:', err);
     }
   };
 

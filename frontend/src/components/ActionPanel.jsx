@@ -8,7 +8,7 @@ const NAME_MAP = {
     "Yuriko": "ユリコ", "Yuri": "ユーリ"
 };
 
-export default function ActionPanel({ phase, role, players, lastCryoId, onAction, actionResult }) {
+export default function ActionPanel({ phase, role, players, lastCryoId, onAction, actionResult, privateInfo, myId }) {
     const [actionDone, setActionDone] = useState(false);
 
     if (phase !== 'ROLE_ACTIONS' && phase !== 'WARP') return null;
@@ -18,8 +18,8 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
         return null;
     }
 
-    // Ignore non-Gonosia during WARP
-    if (phase === 'WARP' && role !== 'GONOSIA') {
+    // Ignore non-Gnosia during WARP
+    if (phase === 'WARP' && role !== 'GNOSIA') {
         return (
             <div className="action-panel-overlay">
                 <style>{`
@@ -66,11 +66,12 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
             themeColor = "#4ade80";
         }
     } else if (phase === 'WARP') {
-        if (role === 'GONOSIA') {
+        if (role === 'GNOSIA') {
             title = "G-VIRUS OUTBREAK LOGIC";
             description = "SELECT A HUMAN TARGET FOR ELIMINATION.";
-            // Gonosia can only target alive NON-Gonosia players (UI logic)
-            targets = players.filter(p => p.alive && p.role !== 'GONOSIA');
+            // Gnosia can only target alive NON-Gnosia players (UI logic)
+            // p.role is hidden, so we use privateInfo.partners and myId
+            targets = players.filter(p => p.alive && p.id !== myId && !privateInfo?.partners?.includes(p.id));
             actionLabel = "ELIMINATE";
             themeColor = "#ff0040";
         }
@@ -150,7 +151,7 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
                 ) : (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="result-box">
                         {actionResult ? 
-                           (actionResult === 'GONOSIA' ? <span style={{color:'#ff0040'}}>GONOSIA SIGNATURE DETECTED</span> : <span style={{color:'#4ade80'}}>HUMAN CONFIRMED</span>)
+                           (actionResult === 'GNOSIA' ? <span style={{color:'#ff0040'}}>GNOSIA SIGNATURE DETECTED</span> : <span style={{color:'#4ade80'}}>HUMAN CONFIRMED</span>)
                            : <span>ACTION LOGGED INTO SYSTEM.</span>
                         }
                     </motion.div>
