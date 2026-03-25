@@ -16,8 +16,8 @@ public class GameLogicService {
         List<Player> players = room.getPlayers();
         int playerCount = players.size();
 
-        if (playerCount < 3) {
-            log.warn("Need at least 3 players. Proceeding anyway for testing.");
+        if (playerCount < 5) {
+            log.warn("Need at least 5 players for a balanced Gnosia game. Proceeding for testing.");
         }
 
         // Reset roles
@@ -33,9 +33,9 @@ public class GameLogicService {
         List<Role> specialRoles = new ArrayList<>();
 
         if (playerCount <= 5) {
-            // 3-5 players: 1 Gnosia, no special roles
+            // 5 players (fixed limit): 1 Gnosia + 1 Engineer for balance
             gnosiaCount = 1;
-
+            specialRoles.add(Role.ENGINEER);
         } else if (playerCount <= 10) {
             // 6-10 players: 2 Gnosia + one random "timeline" of special roles
             gnosiaCount = 2;

@@ -25,20 +25,20 @@ Identify the infected (Gnosia) before they eliminate the crew!
 - **Port**: 3000
 
 ## 🌌 Game Phases
-1. **Lobby**: Players join via room code. Need 5+ players to start (Max 15).
+1. **Lobby**: Players join via room code. Need 5 players to start.
 2. **Discussion (10 min)**: Public chat to identify suspects.
 3. **Voting**: Cast your vote via player grid.
 4. **Cryosleep**: Highest voted player is "frozen".
 5. **Role Actions**: Special roles perform private scans/protections.
-6. **Warp (5 min)**: Only Gonosia move and communicate. They select a target to eliminate.
+6. **Warp (5 min)**: Only Gnosia move and communicate. They select a target to eliminate.
 7. **Result**: Levi AI announces the night's outcome.
 
 ## 🎭 Roles
-- **Gonosia (3)**: The infected killers. Must hide and eliminate humans.
+- **Gnosia (1)**: The infected killers. Must hide and eliminate humans.
 - **Engineer**: Can scan one player per day to check for infection.
 - **Doctor**: Can perform an autopsy on the cryoslept player.
 - **Guardian Angel**: Can protect one player (not self) from the nightly attack.
-- **Human**: Stay alive and vote out the Gonosia.
+- **Human**: Stay alive and vote out the Gnosia.
 
 ## ✨ Features
 - **Server-authoritative logic**: All game state managed on backend.

@@ -55,6 +55,7 @@
   margin: 0;
   background: linear-gradient(135deg, #fff 0%, var(--accent-blue) 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 0 10px 20px rgba(0,0,0,0.3);
 }
@@ -213,6 +214,55 @@
 .landscape-card.selected {
   border-color: #ff0040;
   box-shadow: 0 0 20px rgba(255, 0, 64, 0.4);
+}
+
+.landscape-card.self {
+  border: 4px double #29b6f6;
+  box-shadow: 0 0 30px rgba(41, 182, 246, 0.4), inset 0 0 20px rgba(41, 182, 246, 0.2);
+  z-index: 5;
+}
+
+.role-symbol-circle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.role-symbol-circle.eng { border-color: rgba(0, 255, 245, 0.8); box-shadow: 0 0 15px rgba(0, 255, 245, 0.5); }
+.role-symbol-circle.doc { border-color: rgba(177, 156, 217, 0.8); box-shadow: 0 0 15px rgba(177, 156, 217, 0.5); }
+.role-symbol-circle.ga { border-color: rgba(74, 222, 128, 0.8); box-shadow: 0 0 15px rgba(74, 222, 128, 0.5); }
+.role-symbol-circle.gno { border-color: rgba(255, 0, 64, 0.8); box-shadow: 0 0 15px rgba(255, 0, 64, 0.5); }
+
+.role-symbol-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-you-label {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  background: #29b6f6;
+  color: #000;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 2px 8px;
+  letter-spacing: 2px;
+  z-index: 10;
+  border-radius: 2px;
 }
 
 .card-suspect-stamp {

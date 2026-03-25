@@ -178,15 +178,15 @@ export default function CreateRoom({ onSave, onBack }) {
           <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 10 }}>
-                <input type="range" min={3} max={15} value={participants}
+                <input type="range" min={5} max={5} value={participants}
                   onChange={e => setParticipants(Number(e.target.value))} />
                 <div>
                   <div className="count-display">{participants}</div>
-                  <div className="max-label">MAX 15</div>
+                  <div className="max-label">MAX 5</div>
                 </div>
               </div>
               <div className="participant-dots">
-                {Array.from({length: 15}, (_, i) => (
+                {Array.from({length: 5}, (_, i) => (
                   <div key={i} className={`p-dot ${i < participants ? "active" : "inactive"}`} />
                 ))}
               </div>

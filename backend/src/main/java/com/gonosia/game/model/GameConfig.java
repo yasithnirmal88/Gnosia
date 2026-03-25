@@ -1,7 +1,7 @@
 package com.gonosia.game.model;
 
 public class GameConfig {
-    private int maxPlayers = 15;
+    private int maxPlayers = 5;
     private int gnosiaCount = 0; // 0 means auto
 
     private static final int[] DISCUSSION_TIMES = { 0, 300, 600, 600, 600 };

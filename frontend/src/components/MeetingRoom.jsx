@@ -45,17 +45,21 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
   const amIDead = me?.alive === false; // true if cryoslept OR killed
   const isSpectator = amIDead; // alias for audio logic
 
-  // WARP audio: only alive Gonosia can hear Gonosia. Dead players hear nothing.
-  const isSystemMuted = amIDead || (isWarpPhase && !isGnosia);
+  // Dead players (spectators): mic is muted (can't speak), but they CAN hear.
+  // WARP phase: only alive Gnosia can hear Gnosia channel.
+  const isMicMuted = amIDead || (isWarpPhase && !isGnosia); // mic output blocked
+  const isSystemMuted = isMicMuted;
   const finalMuted = localMuted || isSystemMuted;
 
   const canHear = (p) => {
-    if (!p.alive) return false;
+    // Spectators (dead) can hear all alive players during DISCUSSION
     if (isWarpPhase) {
-      // During WARP, Gnosia can only hear fellow Gnosia
+      if (amIDead) return false; // Dead players can't hear WARP channel (secret)
+      // During WARP, alive Gnosia can only hear fellow Gnosia
       return isGnosia && (p.role === 'GNOSIA' || p.self || (privateInfo?.partners?.includes(p.id)));
     }
-    return true; // During DISCUSSION all alive players can hear each other
+    // During DISCUSSION: dead players can hear everyone alive (spectate)
+    return p.alive;
   };
 
   useEffect(() => {
@@ -91,7 +95,7 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
         .game-flow-container {
             position: absolute;
             inset: 0;
-            background: rgba(0, 4, 10, 0.4);
+            background: transparent;
             display: flex;
             flex-direction: column;
             font-family: 'Share Tech Mono', monospace;
@@ -110,28 +114,28 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
 
         .main-grid-area {
             flex: 1;
-            padding: 20px;
+            padding: 20px 30px 10px;
             display: flex;
             justify-content: center;
-            align-items: center;
-            gap: 12px;
+            align-items: flex-start;
+            gap: 14px;
             width: 100%;
             overflow-x: auto;
         }
 
         .crew-card {
-            background: #010b1f;
-            border: 2px solid #1a3a5a;
+            background: #030d1e;
+            border: 1px solid rgba(41,182,246,0.3);
             position: relative;
             display: flex;
-            width: 140px;
-            height: 140px;
-            border-radius: 12px;
+            flex-direction: column;
+            width: 150px;
+            height: 240px;
             flex-shrink: 0;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow: hidden;
-            box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+            box-shadow: 0 0 20px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.5);
         }
 
         .bg-portrait {
@@ -141,14 +145,18 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             height: 100%;
             object-fit: cover;
             object-position: top center;
-            opacity: 0.9;
-            filter: saturate(1.1) contrast(1.1);
+            opacity: 0.95;
+            filter: saturate(1.1) contrast(1.05);
         }
 
         .bg-overlay {
             position: absolute;
             inset: 0;
-            background: linear-gradient(to right, rgba(0,8,24,0.6) 0%, rgba(0,8,24,0.1) 40%, rgba(0,8,24,0.7) 100%);
+            background: linear-gradient(to bottom,
+                rgba(0,10,28,0.15) 0%,
+                rgba(0,10,28,0.0) 40%,
+                rgba(0,10,28,0.7) 70%,
+                rgba(0,10,28,0.95) 100%);
         }
 
         .gnosia-detector-bar {
@@ -211,149 +219,134 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             pointer-events: none;
         }
 
-        .crew-card:hover:not(.locked) {
+        .crew-card:hover:not(.locked):not(.killed):not(.frozen) {
             border-color: #29b6f6;
-            box-shadow: 0 0 15px rgba(41, 182, 246, 0.3), inset 0 0 20px rgba(41, 182, 246, 0.3);
-            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(41,182,246,0.4), 0 0 40px rgba(41,182,246,0.1);
+            transform: translateY(-3px);
         }
 
-        .crew-card.self, .crew-card.speaking {
-            border-color: #29b6f6;
+        .crew-card.self {
+            border: 4px double #29b6f6;
+            box-shadow: 0 0 15px rgba(41,182,246,0.3);
+            outline: 1px solid rgba(41,182,246,0.2);
+            outline-offset: 4px;
         }
 
-        .crew-card.locked {
-            opacity: 0.38;
-            filter: grayscale(0.5);
-            cursor: default;
+        .crew-card.speaking {
+            border-color: #29b6f6;
+            box-shadow: 0 0 20px rgba(41,182,246,0.5);
         }
 
         .crew-card.frozen {
             border-color: #00ffff;
-            box-shadow: inset 0 0 30px rgba(0, 255, 255, 0.4);
-            opacity: 0.6;
-            filter: hue-rotate(180deg) blur(1px) brightness(0.9);
+            box-shadow: 0 0 20px rgba(0,255,255,0.4);
+            filter: hue-rotate(170deg) brightness(0.85);
             cursor: not-allowed;
         }
 
         .crew-card.killed {
-            border-color: #555;
-            opacity: 0.4;
-            filter: grayscale(1);
+            border-color: #3a1a1a;
+            filter: grayscale(0.8) brightness(0.6);
             cursor: not-allowed;
         }
 
+        /* Card top ID strip */
+        .card-id-strip {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            z-index: 10;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 7px;
+            color: rgba(41,182,246,0.7);
+            letter-spacing: 1px;
+            background: rgba(0,10,28,0.7);
+            padding: 2px 5px;
+            border: 1px solid rgba(41,182,246,0.2);
+        }
+
+        /* Role icon (top-right) */
         .role-icon {
             position: absolute;
-            top: 5px;
-            right: 5px;
-            font-size: 20px;
-            background: rgba(0,0,0,0.7);
+            top: 6px;
+            right: 6px;
+            font-size: 16px;
+            background: rgba(0,0,0,0.75);
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 26px;
+            height: 26px;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 10;
+            border: 1px solid rgba(41,182,246,0.3);
         }
-        
+
         .role-icon.gnosia {
-            border: 1px solid #ff0040;
+            border-color: #ff0040;
             box-shadow: 0 0 8px #ff0040;
         }
 
-        .suspect-tag {
+        /* Crew label (mid-card) */
+        .card-crew-label {
             position: absolute;
-            left: 0;
-            top: 0;
+            top: 50%;
+            left: 8px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 7px;
+            color: rgba(41,182,246,0.45);
+            letter-spacing: 2px;
+            z-index: 10;
+            text-transform: uppercase;
+        }
+
+        /* Bottom info block */
+        .card-bottom {
+            position: absolute;
             bottom: 0;
-            width: 20px;
-            background: rgba(0,0,0,0.7);
-            writing-mode: vertical-rl;
-            text-orientation: mixed;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            left: 0;
+            right: 0;
+            padding: 8px 10px 10px;
+            z-index: 10;
+            background: linear-gradient(to top, rgba(0,8,24,0.95) 0%, transparent 100%);
+        }
+
+        .jp-name-bottom {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-size: 26px;
+            font-weight: 900;
+            color: #fff;
+            line-height: 1;
+            text-shadow: 0 0 14px rgba(41,182,246,0.5);
+            margin-bottom: 2px;
+        }
+
+        .en-name-bottom {
             font-family: 'Orbitron', sans-serif;
             font-size: 8px;
-            font-weight: 900;
-            color: #ff0040;
-            letter-spacing: 5px;
-            border-right: 1px solid rgba(255, 0, 64, 0.4);
-            z-index: 2;
-        }
-
-        .info-column {
-            position: absolute;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            padding: 10px 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            z-index: 2;
-        }
-
-        .gog-text {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 6px;
-            color: #1a3a5a;
-            letter-spacing: 1px;
-            text-align: right;
-            line-height: 1.2;
-            margin-bottom: 8px;
-        }
-
-        .jp-name-vert {
-            font-family: 'Noto Sans JP', sans-serif;
-            font-size: 28px;
-            font-weight: 900;
-            color: #29b6f6;
-            writing-mode: vertical-rl;
-            text-orientation: upright;
-            letter-spacing: -2px;
-            text-shadow: 0 0 10px rgba(41, 182, 246, 0.4);
-            flex: 1;
-            display: flex;
-            align-items: center;
-        }
-
-        .bottom-info {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 4px;
-        }
-
-        .en-name-vert {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 10px;
-            color: rgba(255,255,255,0.7);
+            color: rgba(41,182,246,0.7);
             letter-spacing: 2px;
         }
 
         .you-tag {
             font-family: 'Orbitron', sans-serif;
-            font-size: 10px;
-            color: #29b6f6;
-            font-weight: 900;
-        }
-
-        .live-tag {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 9px;
+            font-size: 8px;
             color: #29b6f6;
             font-weight: 900;
             letter-spacing: 1px;
-            background: rgba(41, 182, 246, 0.2);
-            padding: 2px 4px;
+            margin-top: 2px;
         }
 
-        .diamond-symbol {
-            font-size: 12px;
-            color: #1a3a5a;
-            line-height: 1;
+        .live-tag {
+            display: inline-block;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 7px;
+            color: #29b6f6;
+            letter-spacing: 1px;
+            background: rgba(41,182,246,0.15);
+            border: 1px solid rgba(41,182,246,0.3);
+            padding: 1px 4px;
+            margin-left: 4px;
         }
 
         .bottom-control-bar {
@@ -683,19 +676,18 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
 
       {/* HEADER SECTION */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '10px 40px', marginTop: '10px' }}>
-        <div style={{ color: '#1a3a5a', fontFamily: 'Orbitron', letterSpacing: '4px', fontSize: '12px' }}>
-          CREW MANIFEST — CLICK MEMBER TO OPEN PRIVATE CHANNEL
+        <div style={{ color: 'rgba(41,182,246,0.5)', fontFamily: 'Orbitron', letterSpacing: '4px', fontSize: '10px' }}>
+          C.O.G. CREW DATA SYSTEM
         </div>
-        <div style={{ flex: 1, height: '1px', background: '#1a3a5a' }} />
+        <div style={{ flex: 1, height: '1px', background: 'rgba(41,182,246,0.15)' }} />
       </div>
 
       {/* MAIN CARDS GRID */}
       <div className="main-grid-area">
-        {players.map(p => {
+        {players.map((p, idx) => {
           const hasStream = !!streams[p.id];
           const isSpeaking = hasStream && canHear(p);
           const votesForThisPlayer = Object.values(votes).filter(id => id === p.id).length;
-          
           const isMe = p.id === playerId;
           const isPartner = privateInfo?.role === 'GNOSIA' && privateInfo?.partners?.includes(p.id);
 
@@ -712,10 +704,11 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
            }
 
           const cardStateClass = p.cryoslept ? 'frozen' : (!p.alive ? 'killed' : '');
-          
+          const idNum = String(idx + 1).padStart(3, '0');
+
           return (
-            <div 
-              key={p.id} 
+            <div
+              key={p.id}
               className={`crew-card ${isMe ? 'self' : ''} ${isSpeaking ? 'speaking' : ''} ${cardStateClass}`}
               onClick={() => {
                 if (amIDead) return;
@@ -728,92 +721,174 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
               <img className="bg-portrait" src={p.avatar} alt={p.name} />
               <div className="bg-overlay" />
 
-              {roleIcon && (
-                  <div className={iconClass}>{roleIcon}</div>
+              {/* ID strip top-left */}
+              <div className="card-id-strip">ID {idNum}</div>
+
+              {/* Role icon top-right — only for self */}
+               {isMe && privateInfo?.role === 'ENGINEER' && (
+                <div style={{
+                  position: 'absolute', top: 6, right: 6, zIndex: 15,
+                  background: 'rgba(0,15,35,0.95)',
+                  border: '2px solid rgba(0,255,245,0.8)',
+                  borderRadius: '50%',
+                  width: 48, height: 48,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 0 15px rgba(0,255,245,0.5)',
+                  overflow: 'hidden'
+                }}>
+                  <img src="/images/EngineerSymbol.png" alt="ENG" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
               )}
-              
+               {isMe && privateInfo?.role === 'DOCTOR' && (
+                <div style={{
+                  position: 'absolute', top: 6, right: 6, zIndex: 15,
+                  background: 'rgba(20, 0, 40, 0.95)',
+                  border: '2px solid rgba(177, 156, 217, 0.8)',
+                  borderRadius: '50%',
+                  width: 48, height: 48,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 0 20px rgba(177, 156, 217, 0.6)',
+                  overflow: 'hidden'
+                }}>
+                  <img src="/images/DoctorSymbol.png" alt="DOC" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              )}
+               {isMe && privateInfo?.role === 'GUARDIAN_ANGEL' && (
+                <div style={{
+                  position: 'absolute', top: 6, right: 6, zIndex: 15,
+                  background: 'rgba(0, 20, 12, 0.95)',
+                  border: '2px solid rgba(74,222,128,0.8)',
+                  borderRadius: '50%',
+                  width: 48, height: 48,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 0 15px rgba(74,222,128,0.5)',
+                  overflow: 'hidden'
+                }}>
+                  <img src="/images/GuardianAngelSymbol.png" alt="GA" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              )}
+               {(isMe && privateInfo?.role === 'GNOSIA') && (
+                <div style={{
+                  position: 'absolute', top: 6, right: 6, zIndex: 15,
+                  background: 'rgba(20, 0, 5, 0.95)',
+                  border: '2px solid rgba(255, 0, 64, 0.8)',
+                  borderRadius: '50%',
+                  width: 48, height: 48,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 0 15px rgba(255, 0, 64, 0.5)',
+                  overflow: 'hidden'
+                }}>
+                  <img src="/images/GnosiaSymbol.png" alt="G" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              )}
+
+              {/* Crew role label mid-card */}
+              <div className="card-crew-label">
+                CREW — {isMe
+                  ? (privateInfo?.role?.replace('_', ' ') || 'CREW')
+                  : (p.cryoslept ? 'CRYOSLEPT' : (!p.alive ? 'DECEASED' : 'CREW'))}
+              </div>
+
+              {/* State overlays */}
               {p.cryoslept && <div className="icy-overlay" />}
               {(!p.alive && !p.cryoslept) && (
-                  <>
-                    <div className="kill-strike" />
-                    <div className="kill-strike-2" />
-                  </>
+                <>
+                  <div className="kill-strike" />
+                  <div className="kill-strike-2" />
+                </>
               )}
-              
-                {/* Voting Indicators */}
-                {room?.gameState?.phase === 'CRYOSLEEP' && votesForThisPlayer > 0 && (
-                    <div className="vote-counter">{votesForThisPlayer}</div>
-                )}
 
-                {/* Show who each person voted for during CRYOSLEEP reveal */}
-                {room?.gameState?.phase === 'CRYOSLEEP' && votingResults[p.id] && (
-                    <div className="vote-cast-tag">
-                        VOTED: {players.find(target => target.id === votingResults[p.id])?.name || "???"}
-                    </div>
-                )}
-                
-                {/* Gnosia Detection Bar */}
-                {isMe && (
-                    <div className={`gnosia-detector-bar ${hasGnosia ? 'active' : 'clear'}`} />
-                )}
+              {/* Vote counter during CRYOSLEEP */}
+              {room?.gameState?.phase === 'CRYOSLEEP' && votesForThisPlayer > 0 && (
+                <div className="vote-counter">{votesForThisPlayer}</div>
+              )}
 
-              <div className="suspect-tag">SUSPECT</div>
-              
-              <div className="info-column">
-                <div className="gog-text">G.O.G.<br/>CREW</div>
-                <div className="jp-name-vert">{NAME_MAP[p.name] || p.name}</div>
-                
-                <div className="bottom-info">
-                  <div className="en-name-vert">{p.name.toUpperCase()}</div>
-                  {p.self && <div className="you-tag">[YOU]</div>}
-                  {!p.self && <div className="diamond-symbol" style={{color: isSpeaking ? '#ff0040' : '#29b6f6'}}>♦</div>}
-                  {isSpeaking && <div className="live-tag">LIVE</div>}
+              {/* Voted-for tag during CRYOSLEEP reveal */}
+              {room?.gameState?.phase === 'CRYOSLEEP' && votingResults[p.id] && (
+                <div className="vote-cast-tag">
+                  VOTED: {players.find(t => t.id === votingResults[p.id])?.name || '???'}
+                </div>
+              )}
+
+              {/* Gnosia detection bar (self only) */}
+              {isMe && (
+                <div className={`gnosia-detector-bar ${hasGnosia ? 'active' : 'clear'}`} />
+              )}
+
+              {/* Bottom name block */}
+              <div className="card-bottom">
+                <div className="jp-name-bottom">{NAME_MAP[p.name] || p.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div className="en-name-bottom">{p.name.toUpperCase()}</div>
+                  {isMe && <span className="you-tag">[YOU]</span>}
+                  {isSpeaking && <span className="live-tag">LIVE</span>}
                 </div>
               </div>
+
               {hasStream && (
-                  <AudioNode 
-                      stream={streams[p.id]} 
-                      isLocal={p.self} 
-                      volume={isSpeaking ? globalVolume : 0} 
-                      muted={!isSpeaking}
-                  />
+                <AudioNode
+                  stream={streams[p.id]}
+                  isLocal={p.self}
+                  volume={isSpeaking ? globalVolume : 0}
+                  muted={!isSpeaking}
+                />
               )}
             </div>
           );
         })}
       </div>
 
-      {/* FOOTER */}
+      {/* FOOTER STATUS BAR */}
       <div className="bottom-control-bar">
-        <div style={{display: 'flex', gap: '20px', alignItems: 'center'}}>
-          <div className="status-pill">PLAYER: {playerName?.toUpperCase() || "SETSU"}</div>
-          <div className="status-pill" style={{borderColor: '#ff0040', color: '#ff0040'}}>[ACCESS RESTRICTED]</div>
+        <div style={{display:'flex', alignItems:'center', gap:'24px'}}>
+          {/* Cycle */}
+          <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+            <span style={{width:6, height:6, borderRadius:'50%', background:'#00d26a', display:'inline-block', boxShadow:'0 0 6px #00d26a'}} />
+            <span style={{fontFamily:'Orbitron', fontSize:9, color:'rgba(255,255,255,0.4)', letterSpacing:2}}>CYCLE</span>
+            <span style={{fontFamily:'Orbitron', fontSize:10, color:'#29b6f6', fontWeight:900, letterSpacing:1}}>{String(room?.meetingRound || 1).padStart(2,'0')}</span>
+          </div>
+          {/* Vessel */}
+          <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+            <span style={{fontFamily:'Orbitron', fontSize:9, color:'rgba(255,255,255,0.4)', letterSpacing:2}}>VESSEL</span>
+            <span style={{fontFamily:'Orbitron', fontSize:10, color:'#29b6f6', fontWeight:900, letterSpacing:1}}>NOVA-{room?.roomCode?.substring(0,1) || '6'}</span>
+          </div>
+          {/* Gnosia confirmed */}
+          <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+            <span style={{fontFamily:'Orbitron', fontSize:9, color:'rgba(255,255,255,0.4)', letterSpacing:2}}>GNOSIA</span>
+            <span style={{fontFamily:'Orbitron', fontSize:10, color:'#ff0040', fontWeight:900}}>? CONFIRMED</span>
+          </div>
+          {/* Alive count */}
+          <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+            <span style={{fontFamily:'Orbitron', fontSize:9, color:'rgba(255,255,255,0.4)', letterSpacing:2}}>ALIVE</span>
+            <span style={{fontFamily:'Orbitron', fontSize:10, color:'#4ade80', fontWeight:900}}>
+              {players.filter(p=>p.alive).length} / {players.length}
+            </span>
+          </div>
         </div>
 
-        <div style={{display: 'flex', gap: '20px', alignItems: 'center'}}>
-          <div style={{display: 'flex', gap: '10px'}}>
-             <button 
-                className="control-btn"
-                style={{background:"transparent", border: "1px solid #1a3a5a", color: finalMuted ? "#ff0040" : "#29b6f6", padding: "10px", cursor: "pointer", borderRadius: '50%'}}
-                onClick={() => { if (!isSystemMuted) setLocalMuted(!localMuted); }}
-                disabled={isSystemMuted}
-              >
-                {finalMuted ? <MicOff size={20}/> : <Mic size={20}/>}
-            </button>
-            <button 
-                className="control-btn"
-                style={{background:"transparent", border: "1px solid #1a3a5a", color: globalVolume === 0 ? "#ff0040" : "#29b6f6", padding: "10px", cursor: "pointer", borderRadius: '50%'}}
-                onClick={() => setGlobalVolume(v => v === 0 ? 1 : 0)}
-            >
-                {globalVolume === 0 ? <VolumeX size={20}/> : <Volume2 size={20}/>}
-            </button>
+        <div style={{display:'flex', alignItems:'center', gap:'16px'}}>
+          {/* Mic / Volume buttons */}
+          <button
+            style={{background:'transparent', border:'1px solid #1a3a5a', color: finalMuted ? '#ff0040' : '#29b6f6', padding:'8px 10px', cursor:'pointer', borderRadius:4, display:'flex', alignItems:'center'}}
+            onClick={() => { if (!isSystemMuted) setLocalMuted(!localMuted); }}
+            disabled={isSystemMuted}
+          >
+            {finalMuted ? <MicOff size={16}/> : <Mic size={16}/>}
+          </button>
+          <button
+            style={{background:'transparent', border:'1px solid #1a3a5a', color: globalVolume === 0 ? '#ff0040' : '#29b6f6', padding:'8px 10px', cursor:'pointer', borderRadius:4, display:'flex', alignItems:'center'}}
+            onClick={() => setGlobalVolume(v => v === 0 ? 1 : 0)}
+          >
+            {globalVolume === 0 ? <VolumeX size={16}/> : <Volume2 size={16}/>}
+          </button>
+          {/* Phase badge */}
+          <div style={{fontFamily:'Orbitron', fontSize:9, fontWeight:900, letterSpacing:3, color: currentPhase==='VOTING'?'#ff0040':'#29b6f6', border:`1px solid ${currentPhase==='VOTING'?'#ff0040':'rgba(41,182,246,0.4)'}`, padding:'6px 14px', background: currentPhase==='VOTING'?'rgba(255,0,64,0.1)':'rgba(41,182,246,0.05)'}}>
+            ■ {currentPhase === 'DISCUSSION' ? 'MEETING IN PROGRESS' : currentPhase === 'VOTING' ? 'VOTE LOCKED' : currentPhase}
           </div>
-
-          {voteLocked && (
-            <div className="status-pill" style={{borderColor: '#00d26a', color: '#00d26a'}}>
-              VOTE SECURED
-            </div>
-          )}
         </div>
       </div>
 
@@ -943,8 +1018,8 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
         </div>
       )}
 
-      {/* ===== WARP PHASE — CRYO-SLEEP (alive non-Gnosia) ===== */}
-      {isWarpPhase && (!isGnosia || amIDead) && !amIDead && (
+      {/* ===== WARP PHASE — CRYO-SLEEP (alive non-Gnosia only — NOT dead players) ===== */}
+      {isWarpPhase && !isGnosia && !amIDead && (
         <div className="cryo-sleep-overlay">
           <div className="cryo-rings">
             <div className="cryo-ring" />
@@ -961,40 +1036,37 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
         </div>
       )}
 
-      {/* ===== DEAD PLAYER — ELIMINATED OVERLAY (ALL PHASES) ===== */}
+      {/* ===== DEAD PLAYER — SPECTATOR BANNER (slim, non-blocking) ===== */}
       {amIDead && (
         <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0, 0, 0, 0.96)',
-          zIndex: 7000,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          background: 'rgba(255, 0, 64, 0.08)',
+          borderBottom: '1px solid rgba(255, 0, 64, 0.4)',
+          zIndex: 8000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '20px',
+          padding: '8px 20px',
           fontFamily: "'Orbitron', sans-serif",
+          backdropFilter: 'blur(4px)',
         }}>
-          <div style={{
-            fontSize: '80px', marginBottom: '30px',
-            filter: 'grayscale(1)',
-          }}>💀</div>
-          <div style={{
-            fontSize: '28px', color: '#ff0040',
-            letterSpacing: '16px', fontWeight: 900,
-            textShadow: '0 0 20px #ff0040',
-            marginBottom: '12px',
-          }}>ELIMINATED</div>
-          <div style={{
-            fontSize: '10px', color: '#333',
-            letterSpacing: '5px', textAlign: 'center',
-            lineHeight: 2, maxWidth: '400px'
-          }}>
-            LIFE SIGNS: TERMINATED<br/>
-            ACCESS DENIED — ALL SYSTEMS LOCKED<br/>
-            YOU MAY OBSERVE BUT CANNOT INTERACT
-          </div>
-          <div style={{
-            marginTop: '40px',
-            width: '1px', height: '80px',
-            background: 'linear-gradient(to bottom, #ff0040, transparent)',
+          <span style={{ fontSize: '16px' }}>💀</span>
+          <span style={{
+            fontSize: '9px', color: '#ff0040',
+            letterSpacing: '5px', fontWeight: 900,
+          }}>SPECTATOR MODE</span>
+          <span style={{
+            width: '1px', height: '16px',
+            background: 'rgba(255,0,64,0.3)',
           }} />
+          <span style={{
+            fontSize: '8px', color: '#555',
+            letterSpacing: '3px',
+          }}>GHOST PROTOCOL ACTIVE — OBSERVE ONLY — INTERACTION DISABLED</span>
         </div>
       )}
 
