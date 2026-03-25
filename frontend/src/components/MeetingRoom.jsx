@@ -205,17 +205,16 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             background: linear-gradient(45deg, transparent 45%, #ff0000 48%, #ff0000 52%, transparent 55%);
             background-size: 100% 100%;
             z-index: 15;
-            opacity: 0.8;
+            opacity: 0.9;
             pointer-events: none;
-            filter: drop-shadow(0 0 5px #000);
+            filter: drop-shadow(0 0 5px #ff0000);
         }
 
-        .kill-strike-2 {
+        .kill-red-overlay {
             position: absolute;
             inset: 0;
-            background: linear-gradient(-45deg, transparent 45%, #ff0000 48%, #ff0000 52%, transparent 55%);
-            z-index: 15;
-            opacity: 0.8;
+            background: rgba(255, 0, 0, 0.35);
+            z-index: 14;
             pointer-events: none;
         }
 
@@ -584,85 +583,84 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             letter-spacing: 3px;
         }
 
-        /* === CRYO-SLEEP overlay (non-Gonosia during WARP) === */
-        .cryo-sleep-overlay {
+        /* === WARP overlay (non-Gonosia during WARP) === */
+        .warp-space-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 5, 25, 0.97);
+            background: #000;
             z-index: 6000;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             font-family: 'Orbitron', sans-serif;
-        }
- 
-        .icy-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 255, 255, 0.2);
-            backdrop-filter: blur(1px) saturate(0.5);
-            z-index: 14;
-            pointer-events: none;
-            border: 2px solid #00ffff;
+            overflow: hidden;
         }
 
-        .cryo-rings {
-            position: relative;
-            width: 200px;
-            height: 200px;
-            margin-bottom: 40px;
+        .warp-tunnel {
+            position: absolute;
+            width: 250vw;
+            height: 250vh;
+            background: repeating-conic-gradient(
+                from 0deg,
+                rgba(0, 255, 255, 0.8) 0deg 5deg,
+                rgba(0, 0, 255, 0.5) 5deg 10deg,
+                rgba(138, 43, 226, 0.6) 10deg 15deg,
+                transparent 15deg 20deg
+            );
+            animation: warpSpin 3s linear infinite;
+            filter: blur(15px);
+            mix-blend-mode: screen;
+            opacity: 0.8;
         }
 
-        .cryo-ring {
+        .warp-core {
             position: absolute;
+            width: 80px;
+            height: 80px;
+            background: #000;
             border-radius: 50%;
-            border: 2px solid #29b6f6;
-            animation: cryoPulse 3s ease-in-out infinite;
+            box-shadow: 0 0 100px 50px #c4f0ff, inset 0 0 20px #fff;
+            z-index: 2;
         }
 
-        .cryo-ring:nth-child(1) { inset: 0; animation-delay: 0s; opacity: 0.6; }
-        .cryo-ring:nth-child(2) { inset: 20px; animation-delay: 0.6s; opacity: 0.4; }
-        .cryo-ring:nth-child(3) { inset: 40px; animation-delay: 1.2s; opacity: 0.2; }
-
-        @keyframes cryoPulse {
-            0%, 100% { transform: scale(0.95); opacity: 0.8; }
-            50% { transform: scale(1.05); opacity: 0.2; }
+        @keyframes warpSpin {
+            100% { transform: rotate(360deg) scale(1.5); }
         }
 
-        .cryo-center-icon {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 60px;
-        }
-
-        .cryo-title {
-            font-size: 18px;
-            color: #29b6f6;
-            letter-spacing: 12px;
-            margin-bottom: 12px;
-            text-shadow: 0 0 15px #29b6f6;
-        }
-
-        .cryo-sub {
-            font-size: 10px;
-            color: #1a3a5a;
-            letter-spacing: 5px;
+        .warp-text-container {
+            z-index: 10;
             text-align: center;
-            max-width: 400px;
-            line-height: 2;
+            text-shadow: 0 0 20px #000, 0 0 10px #c4f0ff;
+        }
+
+        .warp-title {
+            font-size: 28px;
+            color: #c4f0ff;
+            letter-spacing: 20px;
+            margin-bottom: 12px;
+            font-weight: 900;
+        }
+
+        .warp-sub {
+            font-size: 11px;
+            color: rgba(196, 240, 255, 0.8);
+            letter-spacing: 8px;
+            line-height: 2.5;
         }
 
         .icy-overlay {
             position: absolute;
             inset: 0;
-            background: rgba(0, 255, 255, 0.2);
-            backdrop-filter: blur(1px) saturate(0.5);
+            background: linear-gradient(135deg, rgba(0,255,255,0.4), rgba(0,0,255,0.2));
+            box-shadow: inset 0 0 30px rgba(0,255,255,0.8);
+            backdrop-filter: blur(2px) contrast(1.2) brightness(1.1);
             z-index: 14;
             pointer-events: none;
-            border: 2px solid #00ffff;
+            border: 3px solid rgba(0, 255, 255, 0.9);
         }
+
+
 
       `}</style>
 
@@ -797,8 +795,8 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
               {p.cryoslept && <div className="icy-overlay" />}
               {(!p.alive && !p.cryoslept) && (
                 <>
+                  <div className="kill-red-overlay" />
                   <div className="kill-strike" />
-                  <div className="kill-strike-2" />
                 </>
               )}
 
@@ -1018,20 +1016,18 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
         </div>
       )}
 
-      {/* ===== WARP PHASE — CRYO-SLEEP (alive non-Gnosia only — NOT dead players) ===== */}
+      {/* ===== WARP PHASE — HYPERSPACE (alive non-Gnosia only — NOT dead players) ===== */}
       {isWarpPhase && !isGnosia && !amIDead && (
-        <div className="cryo-sleep-overlay">
-          <div className="cryo-rings">
-            <div className="cryo-ring" />
-            <div className="cryo-ring" />
-            <div className="cryo-ring" />
-            <div className="cryo-center-icon">❄</div>
-          </div>
-          <div className="cryo-title">CRYO-SLEEP</div>
-          <div className="cryo-sub">
-            NEURAL ACTIVITY SUSPENDED<br/>
-            WARP SEQUENCE IN PROGRESS<br/>
-            AWAITING VESSEL ARRIVAL
+        <div className="warp-space-overlay">
+          <div className="warp-tunnel" />
+          <div className="warp-core" />
+          <div className="warp-text-container">
+            <div className="warp-title">WARP</div>
+            <div className="warp-sub">
+              HYPERSPACE JUMP INITIATED<br/>
+              CREWMATE ELIMINATION PROTOCOL ACTIVE<br/>
+              AWAITING DESTINATION VECTOR
+            </div>
           </div>
         </div>
       )}
