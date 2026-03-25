@@ -1,0 +1,280 @@
+package com.gonosia.game.service;
+
+import com.gonosia.game.model.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+public class GameService {
+    private static final Logger log = LoggerFactory.getLogger(GameService.class);
+
+    private final SimpMessagingTemplate messagingTemplate;
+    private final GameLogicService gameLogicService;
+    private final AnalyticsService analyticsService;
+
+    public GameService(SimpMessagingTemplate messagingTemplate, GameLogicService gameLogicService,
+            AnalyticsService analyticsService) {
+        this.messagingTemplate = messagingTemplate;
+        this.gameLogicService = gameLogicService;
+        this.analyticsService = analyticsService;
+    }
+
+    public void transitionPhase(Room room) {
+        GameState state = room.getGameState();
+        Phase currentPhase = state.getPhase();
+
+        log.info("Transitioning from {} in room {}", currentPhase, room.getRoomCode());
+
+        switch (currentPhase) {
+            case LOBBY:
+                // Starting game — first meeting
+                gameLogicService.assignRoles(room);
+                room.incrementMeetingRound(); // Round 1
+                state.setPhase(Phase.INTRO);
+                state.setRemainingTimeSeconds(14); // 14s for Levi to speak
+                analyticsService.startTracking(room);
+
+                // --- Levi: Initial Announcement (3 Lines in Order) ---
+                String roleMsg = "Engineer.roles.mp3";
+                long eng = room.getPlayers().stream().filter(p -> p.getRole() == Role.ENGINEER).count();
+                long doc = room.getPlayers().stream().filter(p -> p.getRole() == Role.DOCTOR).count();
+                long ga = room.getPlayers().stream().filter(p -> p.getRole() == Role.GUARDIAN_ANGEL).count();
+                
+                if (eng > 0 && doc > 0 && ga > 0) roleMsg = "Engineer.doctor.guardianangel.roles.mp3";
+                else if (eng > 0 && doc > 0) roleMsg = "Engineer.doctor.roles.mp3";
+                else if (eng > 0 && ga > 0) roleMsg = "Engineer.guardianangel.roles.mp3";
+                else if (doc > 0 && ga > 0) roleMsg = "doctor.guardianangel.roles.mp3";
+                else if (doc > 0) roleMsg = "doctor.roles.mp3";
+
+                String crewMsg = getCrewCountAudio(room.getPlayers().size());
+                String gonMsg = getGonosiaCountAudio((int) room.getPlayers().stream().filter(p -> p.getRole() == Role.GONOSIA).count());
+
+                messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
+                        Map.of("type", "LEVI_ANNOUNCEMENT", "sequence", List.of(crewMsg, gonMsg, roleMsg)));
+
+                log.info("[START] Game started with sequence: {} -> {} -> {}", crewMsg, gonMsg, roleMsg);
+                break;
+            case INTRO:
+                state.setPhase(Phase.DISCUSSION);
+                state.setRemainingTimeSeconds(room.getConfig().getDiscussionTimeForRound(room.getMeetingRound()));
+                break;
+            case DISCUSSION:
+                state.setPhase(Phase.VOTING);
+                state.setRemainingTimeSeconds(room.getConfig().getVotingTimeSeconds());
+                state.clearVotes();
+                
+                // --- Levi: Start Voting ---
+                messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
+                        Map.of("type", "LEVI_ANNOUNCEMENT", "audio", "start.voting.mp3"));
+                break;
+            case VOTING:
+                // Store voting history
+                room.getVotingHistory().add(new HashMap<>(state.getCurrentVotes()));
+
+                String targetId = gameLogicService.resolveVoting(room);
+                state.setLastCryosleptPlayerId(targetId);
+                // Put player to cryosleep
+                Player selected = room.getPlayer(targetId);
+                if (selected != null) {
+                    selected.setCryoslept(true);
+                    selected.setAlive(false);
+                    analyticsService.trackElimination(room, targetId);
+                }
+
+                // Behavioral analysis for psychological feedback
+                detectBehavioralPatterns(room);
+                
+                // --- Levi: End Voting ---
+                messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
+                        Map.of("type", "LEVI_ANNOUNCEMENT", "audio", "end.voting.mp3"));
+
+                state.setPhase(Phase.CRYOSLEEP);
+                state.setRemainingTimeSeconds(room.getConfig().getResultTimeSeconds());
+
+                // --- Levi: Cold Sleep Announcement ---
+                if (selected != null) {
+                    messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
+                            Map.of("type", "LEVI_ANNOUNCEMENT", "audio", selected.getName() + ".coldsleep.mp3"));
+                }
+                break;
+            case CRYOSLEEP:
+                Role winner = gameLogicService.checkWin(room); // Refactored to return winner
+                if (winner != null) {
+                    state.setPhase(Phase.GAME_OVER);
+                    analyticsService.endTracking(room, winner);
+                    
+                    // --- Levi: Victory Announcement ---
+                    String winMsg = (winner == Role.GONOSIA) ? "victory_gnosia.mp3" : "victory_human.mp3";
+                    messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
+                        Map.of("type", "LEVI_ANNOUNCEMENT", "audio", winMsg));
+                } else {
+                    state.setPhase(Phase.ROLE_ACTIONS);
+                    state.setRemainingTimeSeconds(room.getConfig().getRoleActionTimeSeconds());
+                }
+                break;
+            case ROLE_ACTIONS:
+                state.setPhase(Phase.WARP);
+                state.setRemainingTimeSeconds(room.getConfig().getWarpTimeSeconds());
+
+                // --- Levi: Warp Sequence ---
+                messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
+                        Map.of("type", "LEVI_ANNOUNCEMENT", "audio", "warp.mp3"));
+                break;
+            case WARP: {
+                String targetToKill = state.getGonosiaTargetPlayerId();
+                String protectedOne = state.getProtectedPlayerId();
+
+                // --- Fallback: if Gonosia never submitted a target, auto-pick a random alive
+                // human ---
+                if (targetToKill == null || room.getPlayer(targetToKill) == null
+                        || !room.getPlayer(targetToKill).isAlive()) {
+                    List<Player> eligibleVictims = room.getPlayers().stream()
+                            .filter(p -> p.isAlive() && p.getRole() != Role.GONOSIA)
+                            .collect(java.util.stream.Collectors.toList());
+                    if (!eligibleVictims.isEmpty()) {
+                        Collections.shuffle(eligibleVictims);
+                        targetToKill = eligibleVictims.get(0).getId();
+                        log.info("[WARP] Gonosia did not submit a target. Auto-selected victim: {}",
+                                eligibleVictims.get(0).getName());
+                    }
+                }
+
+                if (targetToKill != null) {
+                    if (targetToKill.equals(protectedOne)) {
+                        // --- Guardian Angel blocked the kill ---
+                        log.info("[WARP] Kill on {} blocked by Guardian Angel shield.", targetToKill);
+                        // Broadcast shield event so clients can show the protection animation
+                        messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
+                                Map.of("type", "SHIELD_TRIGGERED", "targetId", targetToKill));
+                    } else {
+                        // --- Levi: Kill Confirmation ---
+                        Player victim = room.getPlayer(targetToKill);
+                        if (victim != null && victim.isAlive()) {
+                            victim.setAlive(false);
+                            analyticsService.trackElimination(room, targetToKill);
+                            log.info("[WARP] Gonosia killed: {}", victim.getName());
+
+                            // --- Levi: Kill Confirmation ---
+                            messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
+                                    Map.of("type", "LEVI_ANNOUNCEMENT", "audio", victim.getName() + ".presence.mp3"));
+                        }
+                    }
+                } else {
+                    log.warn("[WARP] No valid target found — no kill this round (all humans protected or none alive).");
+                }
+
+                generateSmartLeviObservations(room);
+
+                state.setPhase(Phase.RESULT);
+                state.setRemainingTimeSeconds(room.getConfig().getResultTimeSeconds());
+                state.clearGonosiaVotes(); // reset for next WARP round
+
+                // --- Levi: Notification ---
+                messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
+                    Map.of("type", "LEVI_ANNOUNCEMENT", "audio", "notification.mp3"));
+                break;
+            }
+            case RESULT:
+                // --- Win-check BEFORE opening a new meeting ---
+                // If Gonosia count >= humans, Gonosia has taken over the ship — no more
+                // meetings.
+                Role gameWinner = gameLogicService.checkWin(room);
+                if (gameWinner != null) {
+                    state.setPhase(Phase.GAME_OVER);
+                    analyticsService.endTracking(room, gameWinner);
+                    if (gameWinner == Role.GONOSIA) {
+                        log.info("[GONOSIA] Ship takeover confirmed. No further meetings. Gonosia wins in room {}",
+                                room.getRoomCode());
+                    }
+                } else {
+                    // Continue — next meeting
+                    room.incrementMeetingRound();
+                    state.setPhase(Phase.DISCUSSION);
+                    int nextTime = room.getConfig().getDiscussionTimeForRound(room.getMeetingRound());
+                    state.setRemainingTimeSeconds(nextTime);
+                    log.info("[MEETING] Round {} begins — {} seconds", room.getMeetingRound(), nextTime);
+                }
+                // Reset per-round transient IDs
+                state.setProtectedPlayerId(null);
+                state.setGonosiaTargetPlayerId(null);
+                state.clearVotes();
+                break;
+            default:
+                break;
+        }
+        broadcastState(room);
+    }
+
+    private void detectBehavioralPatterns(Room room) {
+        GameState state = room.getGameState();
+        Map<String, List<String>> insights = new HashMap<>();
+
+        // Find players who voted for the same target in the last round
+        Map<String, String> lastVotes = room.getVotingHistory().get(room.getVotingHistory().size() - 1);
+        Map<String, List<String>> reverseVotes = new HashMap<>(); // TargetID -> List of VoterIDs
+
+        lastVotes.forEach((voter, target) -> {
+            reverseVotes.computeIfAbsent(target, k -> new ArrayList<>()).add(voter);
+        });
+
+        reverseVotes.forEach((target, voters) -> {
+            if (voters.size() >= 3) {
+                insights.put("Voting Block: " + room.getPlayer(target).getName(), voters);
+            }
+        });
+
+        state.setBehavioralInsights(insights);
+    }
+
+    private void generateSmartLeviObservations(Room room) {
+        List<String> obs = new ArrayList<>();
+        GameState state = room.getGameState();
+
+        // Check for anomalies
+        if (state.getProtectedPlayerId() != null
+                && state.getProtectedPlayerId().equals(state.getGonosiaTargetPlayerId())) {
+            obs.add("Levi AI: Attempted G-Virus containment breach negated by Guardian Angel protocol.");
+        }
+
+        state.setLeviObservations(obs);
+    }
+
+    public void broadcastState(Room room) {
+        // Send state to all
+        RoomResponse publicResponse = RoomResponse.fromRoom(room, null);
+        messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode(), publicResponse);
+
+        // Notify each player privately
+        List<String> gonosiaIds = room.getPlayers().stream()
+                .filter(p -> p.getRole() == Role.GONOSIA)
+                .map(Player::getId)
+                .collect(Collectors.toList());
+
+        for (Player player : room.getPlayers()) {
+            Map<String, Object> privateInfo = new HashMap<>();
+            privateInfo.put("type", "PRIVATE_INFO");
+            privateInfo.put("role", player.getRole());
+            if (player.getRole() == Role.GONOSIA) {
+                privateInfo.put("partners", gonosiaIds);
+            }
+            messagingTemplate.convertAndSendToUser(player.getId(), "/queue/private", privateInfo);
+        }
+    }
+
+    private String getCrewCountAudio(int count) {
+        if (count < 3) return "3crw.lobby.mp3"; 
+        if (count > 15) return "15crw.lobby.mp3";
+        return count + "crw.lobby.mp3";
+    }
+
+    private String getGonosiaCountAudio(int count) {
+        if (count < 1) return "1g.lobby.mp3";
+        if (count > 4) return "4g.lobby.mp3";
+        return count + "g.lobby.mp3";
+    }
+}

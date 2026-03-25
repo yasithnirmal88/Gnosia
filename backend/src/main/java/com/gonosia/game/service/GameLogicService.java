@@ -1,0 +1,124 @@
+package com.gonosia.game.service;
+
+import com.gonosia.game.model.*;
+import org.springframework.stereotype.Service;
+import java.util.*;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Service
+public class GameLogicService {
+    private static final Logger log = LoggerFactory.getLogger(GameLogicService.class);
+    private final Random random = new Random();
+
+    public void assignRoles(Room room) {
+        List<Player> players = room.getPlayers();
+        int playerCount = players.size();
+
+        if (playerCount < 3) {
+            log.warn("Need at least 3 players. Proceeding anyway for testing.");
+        }
+
+        // Reset roles
+        players.forEach(p -> {
+            p.setRole(null);
+            p.setAlive(true);
+            p.setCryoslept(false);
+        });
+
+        Collections.shuffle(players);
+
+        int gonosiaCount;
+        List<Role> specialRoles = new ArrayList<>();
+
+        if (playerCount <= 5) {
+            // 3-5 players: 1 Gnosia, no special roles
+            gonosiaCount = 1;
+
+        } else if (playerCount <= 10) {
+            // 6-10 players: 2 Gnosia + one random "timeline" of special roles
+            gonosiaCount = 2;
+            // 5 possible timelines, randomly selected each game
+            int timeline = random.nextInt(5);
+            switch (timeline) {
+                case 0 -> specialRoles.add(Role.ENGINEER);
+                case 1 -> specialRoles.add(Role.DOCTOR);
+                case 2 -> { specialRoles.add(Role.DOCTOR); specialRoles.add(Role.GUARDIAN_ANGEL); }
+                case 3 -> { specialRoles.add(Role.ENGINEER); specialRoles.add(Role.DOCTOR); }
+                case 4 -> { specialRoles.add(Role.ENGINEER); specialRoles.add(Role.GUARDIAN_ANGEL); }
+            }
+            log.info("[ROLES] 6-10 player timeline #{} chosen: {}", timeline, specialRoles);
+
+        } else {
+            // 11-15 players: 3 Gnosia + all special roles
+            gonosiaCount = 3;
+            specialRoles.add(Role.ENGINEER);
+            specialRoles.add(Role.DOCTOR);
+            specialRoles.add(Role.GUARDIAN_ANGEL);
+        }
+
+        // Allow config override for gonosiaCount
+        if (room.getConfig() != null && room.getConfig().getGonosiaCount() > 0) {
+            gonosiaCount = room.getConfig().getGonosiaCount();
+        }
+
+        int index = 0;
+        for (int i = 0; i < gonosiaCount && index < playerCount; i++) {
+            players.get(index++).setRole(Role.GONOSIA);
+        }
+        for (Role role : specialRoles) {
+            if (index < playerCount) players.get(index++).setRole(role);
+        }
+        while (index < playerCount) {
+            players.get(index++).setRole(Role.HUMAN);
+        }
+
+        // Final shuffle so roles are hidden
+        Collections.shuffle(players);
+        log.info("[ROLES] Assigned {} Gnosia, special roles: {} for {} players",
+                gonosiaCount, specialRoles, playerCount);
+    }
+
+    public String resolveVoting(Room room) {
+        GameState state = room.getGameState();
+        Map<String, Integer> votesCount = new HashMap<>();
+        
+        state.getCurrentVotes().values().forEach(targetId -> {
+            votesCount.merge(targetId, 1, (a, b) -> a + b);
+        });
+        
+        if (votesCount.isEmpty()) return null;
+        
+        // Find player with highest votes
+        String targetPlayerId = votesCount.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
+        
+        return targetPlayerId;
+    }
+
+    public Role checkWin(Room room) {
+        List<Player> alivePlayers = room.getPlayers().stream()
+                .filter(Player::isAlive)
+                .collect(Collectors.toList());
+        
+        long gonosiaCount = alivePlayers.stream().filter(p -> p.getRole() == Role.GONOSIA).count();
+        long humansCount = alivePlayers.size() - gonosiaCount;
+        
+        if (gonosiaCount == 0) {
+            log.info("Humans win in room " + room.getRoomCode());
+            room.getGameState().setWinner(Role.HUMAN);
+            return Role.HUMAN; 
+        }
+        
+        if (gonosiaCount >= humansCount) {
+            log.info("Gonosia win in room " + room.getRoomCode());
+            room.getGameState().setWinner(Role.GONOSIA);
+            return Role.GONOSIA;
+        }
+        
+        return null; // Game continues
+    }
+}

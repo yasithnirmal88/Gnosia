@@ -1,0 +1,24 @@
+# Backend
+backend/target/
+backend/.mvn/
+*.class
+*.jar
+*.war
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Audio (too large for GitHub — keep local only)
+backend/src/main/resources/static/audio/
+backend/src/main/resources/Levi/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

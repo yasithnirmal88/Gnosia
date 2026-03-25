@@ -1,0 +1,14 @@
+target/
+.mvn/
+.idea/
+.vscode/
+*.iml
+apache-maven-3.9.6/
+*.log
+.git/
+.gitignore
+Dockerfile
+node_modules/
+dist/
+build/
+.env*
