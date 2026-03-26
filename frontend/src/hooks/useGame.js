@@ -180,6 +180,11 @@ export const useGame = (initialRoomCode) => {
           { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:stun2.l.google.com:19302' },
           { urls: 'stun:stun3.l.google.com:19302' },
+          { 
+            urls: 'turn:YOUR_TURN_SERVER_URL:3478', 
+            username: 'YOUR_USERNAME', 
+            credential: 'YOUR_PASSWORD' 
+          }
         ]
       }
     });
