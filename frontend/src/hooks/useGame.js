@@ -176,15 +176,29 @@ export const useGame = (initialRoomCode) => {
       stream: userStream.current,
       config: {
         iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' },
-          { 
-            urls: 'turn:YOUR_TURN_SERVER_URL:3478', 
-            username: 'YOUR_USERNAME', 
-            credential: 'YOUR_PASSWORD' 
-          }
+          {
+            urls: "stun:stun.relay.metered.ca:80",
+          },
+          {
+            urls: "turn:global.relay.metered.ca:80",
+            username: "23d01fd94ab5d91f5c051a62",
+            credential: "ptZLytdSArEICpYY",
+          },
+          {
+            urls: "turn:global.relay.metered.ca:80?transport=tcp",
+            username: "23d01fd94ab5d91f5c051a62",
+            credential: "ptZLytdSArEICpYY",
+          },
+          {
+            urls: "turn:global.relay.metered.ca:443",
+            username: "23d01fd94ab5d91f5c051a62",
+            credential: "ptZLytdSArEICpYY",
+          },
+          {
+            urls: "turns:global.relay.metered.ca:443?transport=tcp",
+            username: "23d01fd94ab5d91f5c051a62",
+            credential: "ptZLytdSArEICpYY",
+          },
         ]
       }
     });
