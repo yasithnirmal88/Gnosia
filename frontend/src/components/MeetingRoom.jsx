@@ -51,6 +51,14 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
   const isSystemMuted = isMicMuted;
   const finalMuted = localMuted || isSystemMuted;
 
+  useEffect(() => {
+    if (streams?.local) {
+      streams.local.getAudioTracks().forEach(track => {
+        track.enabled = !finalMuted;
+      });
+    }
+  }, [finalMuted, streams?.local]);
+
   const canHear = (p) => {
     // Spectators (dead) can hear all alive players during DISCUSSION
     if (isWarpPhase) {

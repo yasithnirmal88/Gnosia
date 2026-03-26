@@ -197,7 +197,7 @@ export const useGame = (initialRoomCode) => {
         }
       });
     }
-  }, [room?.players?.length]);
+  }, [room?.players?.length, streams.local]);
 
   // Handle phase-based music transitions
   useEffect(() => {
