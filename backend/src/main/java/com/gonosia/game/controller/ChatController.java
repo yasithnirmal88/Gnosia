@@ -40,7 +40,7 @@ public class ChatController {
                                 Map.of("type", "WARP_CHAT", "message", message));
                         });
             }
-        } else if (currentPhase == Phase.DISCUSSION) {
+        } else if (currentPhase == Phase.DISCUSSION || currentPhase == Phase.LOBBY) {
             // Public chat
             messagingTemplate.convertAndSend("/topic/room/" + roomCode + "/chat", message);
         }
