@@ -192,12 +192,17 @@ export const useGame = (initialRoomCode) => {
   useEffect(() => {
     if (room?.players && playerId && userStream.current) {
       room.players.forEach(p => {
+        // Only initiate if the other player exists and we don't have a peer yet
+        // Deterministic initiation: the player with the "lexicographically smaller" ID initiates the call.
+        // This prevents both sides from trying to be the initiator and causing a race condition.
+        const shouldInitiate = playerId < p.id; 
         if (p.id !== playerId && !peers.current[p.id]) {
-          createPeer(p.id, true);
+          console.log(`[Gnosia] WebRTC: ${shouldInitiate ? 'Initiating' : 'Awaiting'} connection with ${p.name} (${p.id})`);
+          createPeer(p.id, shouldInitiate);
         }
       });
     }
-  }, [room?.players?.length, streams.local]);
+  }, [room?.players?.length, streams.local, playerId]);
 
   // Handle phase-based music transitions
   useEffect(() => {

@@ -14,6 +14,9 @@ const AudioNode = ({ stream, isLocal, volume, muted }) => {
         if (audioRef.current) {
             audioRef.current.volume = volume;
             audioRef.current.muted = muted || isLocal;
+            if (!muted && !isLocal && audioRef.current.srcObject) {
+              audioRef.current.play().catch(e => console.warn("[Gnosia] Audio play error:", e));
+            }
         }
     }, [volume, muted, isLocal]);
 
@@ -841,6 +844,7 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <div className="en-name-bottom">{p.name.toUpperCase()}</div>
                   {isMe && <span className="you-tag">[YOU]</span>}
+                  {hasStream && <span style={{ color: '#00d26a', fontSize: '8px', fontWeight: 900, textShadow: '0 0 5px #00d26a' }}>● ONLINE</span>}
                   {isSpeaking && <span className="live-tag">LIVE</span>}
                 </div>
               </div>

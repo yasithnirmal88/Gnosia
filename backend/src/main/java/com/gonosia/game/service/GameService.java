@@ -266,7 +266,7 @@ public class GameService {
             if (player.getRole() == Role.GNOSIA) {
                 privateInfo.put("partners", gnosiaIds);
             }
-            messagingTemplate.convertAndSendToUser(player.getId(), "/queue/private", privateInfo);
+            messagingTemplate.convertAndSend("/topic/user/" + player.getId() + "/private", privateInfo);
         }
     }
 
