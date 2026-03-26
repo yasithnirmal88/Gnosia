@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Mic, MicOff, Volume2, VolumeX, MessageSquare, Shield, Info, Heart, Zap, Target } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const AudioNode = ({ stream, isLocal, volume, muted }) => {
     const audioRef = useRef();
