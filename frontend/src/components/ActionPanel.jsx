@@ -14,13 +14,10 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
 
     if (phase !== 'ROLE_ACTIONS' && phase !== 'WARP') return null;
 
-    // Non-acting roles during ROLE_ACTIONS — show waiting screen
-    if (phase === 'ROLE_ACTIONS' && !['ENGINEER', 'DOCTOR', 'GUARDIAN_ANGEL'].includes(role)) {
+    // Non-acting roles during either phase — show nothing
+    if (!['ENGINEER', 'DOCTOR', 'GUARDIAN_ANGEL', 'GNOSIA'].includes(role)) {
         return null;
     }
-
-    // Non-Gnosia during WARP — show cryo sleep (handled in MeetingRoom)
-    if (phase === 'WARP' && role !== 'GNOSIA') return null;
 
     const handleActionClick = (p) => {
         if (actionDone) return;
@@ -32,7 +29,7 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
     // ══════════════════════════════════════════
     //  ENGINEER — "Who will you investigate?"
     // ══════════════════════════════════════════
-    if (phase === 'ROLE_ACTIONS' && role === 'ENGINEER') {
+    if (role === 'ENGINEER') {
         const targets = players.filter(p => p.alive && p.id !== myId);
 
         return (
@@ -335,7 +332,7 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
     // ══════════════════════════════════════════
     //  DOCTOR — "Who will you analyze?"
     // ══════════════════════════════════════════
-    if (phase === 'ROLE_ACTIONS' && role === 'DOCTOR') {
+    if (role === 'DOCTOR') {
         const targets = players.filter(p => p.cryoslept);
         const DOC_COLOR = '#b19cd9'; // Medical purple
 
@@ -560,7 +557,7 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
     // ══════════════════════════════════════════
     //  GUARDIAN ANGEL — "Who will you protect?"
     // ══════════════════════════════════════════
-    if (phase === 'ROLE_ACTIONS' && role === 'GUARDIAN_ANGEL') {
+    if (role === 'GUARDIAN_ANGEL') {
         const targets = players.filter(p => p.alive && p.id !== myId);
         const GA_COLOR = '#4ade80';
 
@@ -813,7 +810,7 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
     // ══════════════════════════════════════════
     //  GNOSIA — "Who will you eliminate?" (WARP)
     // ══════════════════════════════════════════
-    if (phase === 'WARP' && role === 'GNOSIA') {
+    if (role === 'GNOSIA') {
         const targets = players.filter(p => p.alive && p.id !== myId && !privateInfo?.partners?.includes(p.id));
 
         return (

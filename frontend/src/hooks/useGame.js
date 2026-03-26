@@ -240,7 +240,7 @@ export const useGame = (initialRoomCode) => {
   const vote       = (targetId) => publish('vote',        { voterId: playerId, targetId });
   const scan       = (targetId) => publish('scan',        { scannerId: playerId, targetId });
   const protect    = (targetId) => publish('protect',     { gaId: playerId, targetId });
-  const doctorCheck = ()        => publish('doctorCheck', { doctorId: playerId });
+  const doctorCheck = (targetId) => publish('doctorCheck', { doctorId: playerId, targetId });
   const kill       = (targetId) => publish('kill',        { voterId: playerId, targetId });
   const startGame  = ()         => publish('start',       {});
 

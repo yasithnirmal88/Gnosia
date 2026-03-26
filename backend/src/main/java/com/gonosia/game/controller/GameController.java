@@ -125,7 +125,7 @@ public class GameController {
     @MessageMapping("/room/{roomCode}/scan")
     public void scan(@DestinationVariable("roomCode") String roomCode, @Payload Map<String, String> payload) {
         Room room = roomManager.getRoom(roomCode);
-        if (room != null && room.getGameState().getPhase() == Phase.ROLE_ACTIONS) {
+        if (room != null && (room.getGameState().getPhase() == Phase.ROLE_ACTIONS || room.getGameState().getPhase() == Phase.WARP)) {
             Player scanner = room.getPlayer(payload.get("scannerId"));
             Player target = room.getPlayer(payload.get("targetId"));
             if (scanner != null && scanner.isAlive() && target != null && scanner.getRole() == Role.ENGINEER) {
@@ -139,11 +139,11 @@ public class GameController {
     @MessageMapping("/room/{roomCode}/doctorCheck")
     public void doctorCheck(@DestinationVariable("roomCode") String roomCode, @Payload Map<String, String> payload) {
         Room room = roomManager.getRoom(roomCode);
-        if (room != null && room.getGameState().getPhase() == Phase.ROLE_ACTIONS) {
+        if (room != null && (room.getGameState().getPhase() == Phase.WARP || room.getGameState().getPhase() == Phase.ROLE_ACTIONS)) {
             Player doctor = room.getPlayer(payload.get("doctorId"));
-            String targetId = room.getGameState().getLastCryosleptPlayerId();
+            String targetId = payload.get("targetId"); // Now manual selection
             Player target = room.getPlayer(targetId);
-            if (doctor != null && doctor.isAlive() && doctor.getRole() == Role.DOCTOR && target != null) {
+            if (doctor != null && doctor.isAlive() && doctor.getRole() == Role.DOCTOR && target != null && target.isCryoslept()) {
                 String result = target.getRole() == Role.GNOSIA ? "GNOSIA" : "HUMAN";
                 messagingTemplate.convertAndSend("/topic/user/" + doctor.getId() + "/private", 
                     Map.of("type", "DOCTOR_CHECK_RESULT", "targetId", target.getId(), "result", result));
@@ -154,7 +154,7 @@ public class GameController {
     @MessageMapping("/room/{roomCode}/protect")
     public void protect(@DestinationVariable("roomCode") String roomCode, @Payload Map<String, String> payload) {
         Room room = roomManager.getRoom(roomCode);
-        if (room != null && room.getGameState().getPhase() == Phase.ROLE_ACTIONS) {
+        if (room != null && (room.getGameState().getPhase() == Phase.ROLE_ACTIONS || room.getGameState().getPhase() == Phase.WARP)) {
             Player ga = room.getPlayer(payload.get("gaId"));
             if (ga != null && ga.isAlive() && ga.getRole() == Role.GUARDIAN_ANGEL) {
                 room.getGameState().setProtectedPlayerId(payload.get("targetId"));

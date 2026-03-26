@@ -269,13 +269,10 @@ const App = () => {
                                 privateInfo={privateInfo}
                                 myId={playerId}
                                 onAction={(id) => {
-                                    if (currentPhase === 'ROLE_ACTIONS') {
-                                        if (privateInfo?.role === 'ENGINEER') scan(id);
-                                        if (privateInfo?.role === 'DOCTOR') doctorCheck(id);
-                                        if (privateInfo?.role === 'GUARDIAN_ANGEL') protect(id);
-                                    } else if (currentPhase === 'WARP') {
-                                        if (privateInfo?.role === 'GNOSIA') kill(id);
-                                    }
+                                    if (privateInfo?.role === 'ENGINEER') scan(id);
+                                    if (privateInfo?.role === 'DOCTOR') doctorCheck(id);
+                                    if (privateInfo?.role === 'GUARDIAN_ANGEL') protect(id);
+                                    if (privateInfo?.role === 'GNOSIA') kill(id);
                                 }}
                             />
                         )}

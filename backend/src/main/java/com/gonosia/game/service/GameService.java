@@ -115,19 +115,21 @@ public class GameService {
                     messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
                         Map.of("type", "LEVI_ANNOUNCEMENT", "audio", winMsg));
                 } else {
-                    state.setPhase(Phase.ROLE_ACTIONS);
-                    state.clearVotes(); // clear the revealed votes for next phases
+                    // Transition DIRECTLY to WARP — roles act during the warp sequence now
+                    state.setPhase(Phase.WARP);
+                    state.clearVotes(); 
                     state.getVotingResults().clear();
-                    state.setRemainingTimeSeconds(room.getConfig().getRoleActionTimeSeconds());
+                    state.setRemainingTimeSeconds(room.getConfig().getWarpTimeSeconds());
+
+                    // --- Levi: Warp Sequence ---
+                    messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
+                            Map.of("type", "LEVI_ANNOUNCEMENT", "audio", "warp.mp3"));
                 }
                 break;
             case ROLE_ACTIONS:
+                // FALLTHROUGH: Legacy phase handling just in case, skipping immediately
                 state.setPhase(Phase.WARP);
                 state.setRemainingTimeSeconds(room.getConfig().getWarpTimeSeconds());
-
-                // --- Levi: Warp Sequence ---
-                messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
-                        Map.of("type", "LEVI_ANNOUNCEMENT", "audio", "warp.mp3"));
                 break;
             case WARP: {
                 String targetToKill = state.getGnosiaTargetPlayerId();

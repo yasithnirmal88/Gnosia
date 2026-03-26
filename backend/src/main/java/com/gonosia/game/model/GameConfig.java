@@ -4,11 +4,11 @@ public class GameConfig {
     private int maxPlayers = 5;
     private int gnosiaCount = 0; // 0 means auto
 
-    private static final int[] DISCUSSION_TIMES = { 0, 300, 600, 600, 600 };
+    private static final int[] DISCUSSION_TIMES = { 0, 180, 300, 300, 300, 300 };
     private int votingTimeSeconds = 60;
-    private int resultTimeSeconds = 15;
-    private int roleActionTimeSeconds = 60;
-    private int warpTimeSeconds = 120;
+    private int resultTimeSeconds = 20;
+    private int roleActionTimeSeconds = 0; // Role actions now happen during the 60s Warp
+    private int warpTimeSeconds = 90; // Increased to 90s to allow for investigative actions during warp sequence
 
     public GameConfig() {}
 
