@@ -170,7 +170,19 @@ export const useGame = (initialRoomCode) => {
   const createPeer = (targetId, initiator, initialSignal = null) => {
     if (!userStream.current) return;
 
-    const peer = new Peer({ initiator, trickle: false, stream: userStream.current });
+    const peer = new Peer({
+      initiator,
+      trickle: false,
+      stream: userStream.current,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+        ]
+      }
+    });
 
     peer.on('signal', signal => {
       if (stompClient.current?.connected) {
