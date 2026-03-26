@@ -290,75 +290,7 @@ const App = () => {
                         )}
                     </AnimatePresence>
 
-                    {/* Standard Player Grid (Gonosia Terminal UI) */}
-                    {room.players.map(player => {
-                        const voteCount = Object.values(room.gameState.currentVotes || {}).filter(v => v === player.id).length;
-                        const isSelected = room.gameState.currentVotes?.[playerId] === player.id;
-                        const isDead = !player.alive;
-                        const isMe = player.id === playerId;
-                        
-                        return (
-                            <motion.div 
-                                key={player.id} 
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                whileHover={{ scale: !isDead ? 1.02 : 1 }}
-                                className={`landscape-card ${isDead ? 'dead' : ''} ${isSelected ? 'selected' : ''} ${isMe ? 'self' : ''}`}
-                                onClick={() => {
-                                    // Dead players cannot interact with anything
-                                    if (isDead) return;
-                                    if (currentPhase === 'VOTING') vote(player.id);
-                                    if (currentPhase === 'ROLE_ACTIONS' && privateInfo?.role === 'ENGINEER') scan(player.id);
-                                    if (isWarp && isGnosia) kill(player.id);
-                                }}
-                            >
-                                <div className="card-suspect-stamp">SUSPECT</div>
-                                
-                                {isMe && privateInfo?.role === 'ENGINEER' && (
-                                    <div className="role-symbol-circle eng">
-                                        <img src="/images/EngineerSymbol.png" alt="Engineer" />
-                                    </div>
-                                )}
-                                {isMe && privateInfo?.role === 'DOCTOR' && (
-                                    <div className="role-symbol-circle doc">
-                                        <img src="/images/DoctorSymbol.png" alt="Doctor" />
-                                    </div>
-                                )}
-                                {isMe && privateInfo?.role === 'GUARDIAN_ANGEL' && (
-                                    <div className="role-symbol-circle ga">
-                                        <img src="/images/GuardianAngelSymbol.png" alt="Guardian" />
-                                    </div>
-                                )}
-                                {(isMe && privateInfo?.role === 'GNOSIA') && (
-                                    <div className="role-symbol-circle gno">
-                                        <img src="/images/GnosiaSymbol.png" alt="Gnosia" />
-                                    </div>
-                                )}
 
-                                <div className="card-info-side">
-                                    <div className="card-gog-label">G.O.G. CREW DATA SYSTEM</div>
-                                    <div className="card-jp-name-giant">{NAME_MAP[player.name] || player.name}</div>
-                                    <div className="card-en-name-bottom">
-                                        {player.name.toUpperCase()}
-                                        <div className="card-vote-diamonds">
-                                            {[...Array(Math.min(voteCount, 5))].map((_, i) => (
-                                                <div key={i} className="card-diamond-pip" />
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="card-portrait-side">
-                                    <img src={player.avatar} alt={player.name} />
-                                    <div className="card-portrait-fade" />
-                                </div>
-
-                                {isSelected && <div className="card-voted-stamp">TARGETED</div>}
-                                {isDead && <div className="card-voted-stamp" style={{color: '#999', borderColor: '#999'}}>ABORTED</div>}
-                                {isMe && <div className="card-you-label">YOU</div>}
-                            </motion.div>
-                        );
-                    })}
                 </main>
             </div>
 

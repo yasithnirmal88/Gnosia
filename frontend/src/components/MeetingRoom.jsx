@@ -114,13 +114,15 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
 
         .main-grid-area {
             flex: 1;
-            padding: 20px 30px 10px;
+            padding: 20px;
             display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            gap: 14px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            align-content: flex-start;
+            gap: 1.5%;
             width: 100%;
-            overflow-x: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .crew-card {
@@ -129,9 +131,11 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
             position: relative;
             display: flex;
             flex-direction: column;
-            width: 150px;
-            height: 240px;
-            flex-shrink: 0;
+            flex: 1 1 0px;
+            min-width: 80px;
+            max-width: calc(20% - 1.2%); /* Max 5 cards per row */
+            aspect-ratio: 15 / 24;
+            height: auto;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow: hidden;
@@ -710,7 +714,13 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
               className={`crew-card ${isMe ? 'self' : ''} ${isSpeaking ? 'speaking' : ''} ${cardStateClass}`}
               onClick={() => {
                 if (amIDead) return;
-                if (!isMe && p.alive) {
+                
+                if (currentPhase === 'VOTING' && !isMe && p.alive && !voteLocked) {
+                    setConfirmModal(p);
+                    return;
+                }
+                
+                if (!isMe && p.alive && currentPhase !== 'VOTING') {
                    setDmTarget(p);
                    setDmOpen(true);
                 }
