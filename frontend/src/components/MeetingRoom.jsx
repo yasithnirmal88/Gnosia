@@ -743,65 +743,69 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
               {/* ID strip top-left */}
               <div className="card-id-strip">ID {idNum}</div>
 
-              {/* Role icon top-right — only for self */}
-               {isMe && privateInfo?.role === 'ENGINEER' && (
+              {/* Role icon — only for self */}
+              {isMe && privateInfo?.role === 'ENGINEER' && (
                 <div style={{
-                  position: 'absolute', top: 6, right: 6, zIndex: 15,
+                  position: 'absolute', bottom: 42, left: 6, zIndex: 15,
                   background: 'rgba(0,15,35,0.95)',
                   border: '2px solid rgba(0,255,245,0.8)',
                   borderRadius: '50%',
-                  width: 48, height: 48,
+                  width: 72, height: 72,
                   display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 0 15px rgba(0,255,245,0.5)',
+                  boxShadow: '0 0 20px rgba(0,255,245,0.6)',
                   overflow: 'hidden'
                 }}>
                   <img src="/images/EngineerSymbol.png" alt="ENG" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', bottom: 2, left: 0, right: 0, background: 'rgba(0,255,245,0.8)', color: '#000', fontSize: '6px', fontWeight: 900, textAlign: 'center', letterSpacing: '0.5px' }}>CREDENTIALS</div>
                 </div>
               )}
-               {isMe && privateInfo?.role === 'DOCTOR' && (
+              {isMe && privateInfo?.role === 'DOCTOR' && (
                 <div style={{
-                  position: 'absolute', top: 6, right: 6, zIndex: 15,
+                  position: 'absolute', bottom: 42, left: 6, zIndex: 15,
                   background: 'rgba(20, 0, 40, 0.95)',
                   border: '2px solid rgba(177, 156, 217, 0.8)',
                   borderRadius: '50%',
-                  width: 48, height: 48,
+                  width: 72, height: 72,
                   display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 0 20px rgba(177, 156, 217, 0.6)',
+                  boxShadow: '0 0 25px rgba(177, 156, 217, 0.7)',
                   overflow: 'hidden'
                 }}>
                   <img src="/images/DoctorSymbol.png" alt="DOC" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', bottom: 2, left: 0, right: 0, background: 'rgba(177,156,217,0.8)', color: '#000', fontSize: '6px', fontWeight: 900, textAlign: 'center', letterSpacing: '0.5px' }}>CREDENTIALS</div>
                 </div>
               )}
-               {isMe && privateInfo?.role === 'GUARDIAN_ANGEL' && (
+              {isMe && privateInfo?.role === 'GUARDIAN_ANGEL' && (
                 <div style={{
-                  position: 'absolute', top: 6, right: 6, zIndex: 15,
+                  position: 'absolute', bottom: 42, left: 6, zIndex: 15,
                   background: 'rgba(0, 20, 12, 0.95)',
                   border: '2px solid rgba(74,222,128,0.8)',
                   borderRadius: '50%',
-                  width: 48, height: 48,
+                  width: 72, height: 72,
                   display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 0 15px rgba(74,222,128,0.5)',
+                  boxShadow: '0 0 20px rgba(74,222,128,0.6)',
                   overflow: 'hidden'
                 }}>
                   <img src="/images/GuardianAngelSymbol.png" alt="GA" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', bottom: 2, left: 0, right: 0, background: 'rgba(74,222,128,0.8)', color: '#000', fontSize: '6px', fontWeight: 900, textAlign: 'center', letterSpacing: '0.5px' }}>CREDENTIALS</div>
                 </div>
               )}
-               {(isMe && privateInfo?.role === 'GNOSIA') && (
+              {(isMe && privateInfo?.role === 'GNOSIA') && (
                 <div style={{
-                  position: 'absolute', top: 6, right: 6, zIndex: 15,
+                  position: 'absolute', bottom: 42, left: 6, zIndex: 15,
                   background: 'rgba(20, 0, 5, 0.95)',
                   border: '2px solid rgba(255, 0, 64, 0.8)',
                   borderRadius: '50%',
-                  width: 48, height: 48,
+                  width: 72, height: 72,
                   display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 0 15px rgba(255, 0, 64, 0.5)',
+                  boxShadow: '0 0 20px rgba(255, 0, 64, 0.6)',
                   overflow: 'hidden'
                 }}>
                   <img src="/images/GnosiaSymbol.png" alt="G" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', bottom: 2, left: 0, right: 0, background: 'rgba(255,0,64,0.8)', color: '#000', fontSize: '6px', fontWeight: 900, textAlign: 'center', letterSpacing: '0.5px' }}>CREDENTIALS</div>
                 </div>
               )}
 

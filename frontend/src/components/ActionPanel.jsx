@@ -317,12 +317,12 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
                 {/* Engineer Authority Badge (Bottom Left) */}
                 <div style={{
                     position: 'fixed', bottom: 20, left: 30,
-                    width: 75, height: 75,
+                    width: 100, height: 100,
                     borderRadius: '50%',
                     background: 'rgba(0, 20, 35, 0.9)',
                     border: '2px solid rgba(0, 255, 245, 0.7)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 0 20px rgba(0, 255, 245, 0.4)',
+                    boxShadow: '0 0 30px rgba(0, 255, 245, 0.5)',
                     overflow: 'hidden',
                     zIndex: 6001
                 }}>
@@ -542,12 +542,12 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
                 {/* Doctor Authority Badge (Bottom Left) */}
                 <div style={{
                     position: 'fixed', bottom: 20, left: 30,
-                    width: 75, height: 75,
+                    width: 100, height: 100,
                     borderRadius: '50%',
                     background: 'rgba(20, 0, 40, 0.9)',
                     border: '2px solid rgba(177, 156, 217, 0.7)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 0 20px rgba(177, 156, 217, 0.4)',
+                    boxShadow: '0 0 30px rgba(177, 156, 217, 0.5)',
                     overflow: 'hidden',
                     zIndex: 6001
                 }}>
@@ -795,12 +795,12 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
                 {/* Guardian Authority Badge (Bottom Left) */}
                 <div style={{
                     position: 'fixed', bottom: 20, left: 30,
-                    width: 75, height: 75,
+                    width: 100, height: 100,
                     borderRadius: '50%',
                     background: 'rgba(0, 20, 10, 0.9)',
                     border: '2px solid rgba(74, 222, 128, 0.7)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 0 20px rgba(74, 222, 128, 0.4)',
+                    boxShadow: '0 0 30px rgba(74, 222, 128, 0.5)',
                     overflow: 'hidden',
                     zIndex: 6001
                 }}>
@@ -981,12 +981,12 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
                 {/* Gnosia Authority Badge (Bottom Left) */}
                 <div style={{
                     position: 'fixed', bottom: 20, left: 30,
-                    width: 75, height: 75,
+                    width: 100, height: 100,
                     borderRadius: '50%',
                     background: 'rgba(25, 0, 5, 0.9)',
                     border: '2px solid rgba(255, 0, 64, 0.7)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 0 20px rgba(255, 0, 64, 0.4)',
+                    boxShadow: '0 0 30px rgba(255, 0, 64, 0.5)',
                     overflow: 'hidden',
                     zIndex: 6001
                 }}>
