@@ -45,112 +45,173 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
             }}>
                 <style>{`
                     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@700;900&display=swap');
-                    @keyframes engineerPulse {
-                        0%, 100% { box-shadow: 0 0 10px rgba(0,255,245,0.3), inset 0 0 20px rgba(0,255,245,0.05); }
-                        50% { box-shadow: 0 0 30px rgba(0,255,245,0.6), inset 0 0 30px rgba(0,255,245,0.1); }
+                    
+                    .holo-container {
+                        perspective: 1000px;
+                        overflow-x: hidden;
                     }
-                    @keyframes scanLine {
-                        0% { top: -2px; }
-                        100% { top: 100%; }
+                    
+                    @keyframes holoPulse {
+                        0%, 100% { box-shadow: 0 0 10px rgba(0,255,245,0.2), inset 0 0 15px rgba(0,255,245,0.05); }
+                        50% { box-shadow: 0 0 25px rgba(0,255,245,0.4), inset 0 0 25px rgba(0,255,245,0.1); }
                     }
-                    @keyframes fadeUp {
-                        from { opacity: 0; transform: translateY(20px); }
-                        to { opacity: 1; transform: translateY(0); }
+
+                    @keyframes holoScanLine {
+                        0% { top: -5%; opacity: 0; }
+                        5% { opacity: 0.8; }
+                        95% { opacity: 0.8; }
+                        100% { top: 105%; opacity: 0; }
                     }
-                    .eng-container {
-                        animation: engineerPulse 3s ease-in-out infinite;
-                        border: 1px solid rgba(0,255,245,0.4);
-                    }
-                    .eng-card {
-                        position: relative;
-                        background: rgba(0,20,40,0.8);
-                        border: 1px solid rgba(0,255,245,0.25);
+
+                    .holo-hud-circle {
+                        position: fixed;
+                        top: 20px;
+                        left: 20px;
+                        width: 120px;
+                        height: 120px;
+                        border: 1px solid rgba(0, 255, 245, 0.2);
+                        border-radius: 50%;
                         display: flex;
                         align-items: center;
-                        gap: 0;
-                        overflow: hidden;
-                        cursor: pointer;
-                        transition: all 0.2s;
-                        height: 72px;
-                        animation: fadeUp 0.4s ease both;
+                        justify-content: center;
+                        z-index: 10;
                     }
-                    .eng-card:hover {
-                        border-color: rgba(0,255,245,0.8);
-                        background: rgba(0,255,245,0.07);
-                        transform: scale(1.02);
+                    .holo-hud-circle::before {
+                        content: '';
+                        width: 100px;
+                        height: 100px;
+                        border: 1px dashed rgba(0, 255, 245, 0.3);
+                        border-radius: 50%;
+                        animation: rotate 20s linear infinite;
                     }
-                    .eng-card.selected-card {
-                        border-color: #00fff5;
-                        background: rgba(0,255,245,0.15);
-                        box-shadow: 0 0 20px rgba(0,255,245,0.4);
-                    }
-                    .eng-card::before {
+                    .holo-hud-circle::after {
                         content: '';
                         position: absolute;
-                        left: 0; top: 0; bottom: 0;
-                        width: 22px;
-                        background: rgba(0,255,245,0.07);
-                        border-right: 1px solid rgba(0,255,245,0.2);
-                        writing-mode: vertical-rl;
-                        display: flex; align-items: center; justify-content: center;
+                        width: 4px;
+                        height: 4px;
+                        background: #00fff5;
+                        border-radius: 50%;
+                        box-shadow: 0 0 10px #00fff5;
                     }
-                    .card-suspect-label {
-                        position: absolute;
-                        left: 0; top: 0; bottom: 0;
-                        width: 22px;
-                        display: flex; align-items: center; justify-content: center;
+                    @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+                    .holo-card {
+                        position: relative;
+                        background: rgba(0, 20, 40, 0.8);
+                        border: 1px solid rgba(0, 255, 245, 0.3);
+                        height: 70px;
+                        display: flex;
+                        align-items: center;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        overflow: hidden;
+                        clip-path: polygon(0% 0%, 95% 0%, 100% 15%, 100% 100%, 5% 100%, 0% 85%);
+                    }
+
+                    .holo-card:hover {
+                        background: rgba(0, 255, 245, 0.1);
+                        border-color: rgba(0, 255, 245, 0.8);
+                        transform: translateX(5px);
+                    }
+
+                    .holo-card-active {
+                        background: rgba(0, 255, 245, 0.2) !important;
+                        border-color: #00fff5 !important;
+                        box-shadow: 0 0 20px rgba(0, 255, 245, 0.4);
+                    }
+
+                    .holo-card-sidebar {
+                        width: 20px;
+                        height: 100%;
+                        background: rgba(0, 255, 245, 0.1);
+                        border-right: 1px solid rgba(0, 255, 245, 0.3);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
                         writing-mode: vertical-lr;
                         font-family: 'Orbitron', sans-serif;
                         font-size: 6px;
                         letter-spacing: 4px;
-                        color: rgba(0,255,245,0.5);
-                        z-index: 2;
+                        color: rgba(0, 255, 245, 0.6);
                     }
-                    .eng-card-img {
-                        width: 64px; height: 72px;
-                        object-fit: cover;
-                        object-position: top center;
-                        flex-shrink: 0;
-                        margin-left: 22px;
-                        filter: saturate(0.8) brightness(0.9);
-                        transition: filter 0.2s;
-                    }
-                    .eng-card:hover .eng-card-img { filter: saturate(1.2) brightness(1); }
-                    .eng-card-info {
+
+                    .holo-card-content {
                         flex: 1;
-                        padding: 6px 10px;
+                        padding: 0 15px;
                         display: flex;
                         flex-direction: column;
-                        gap: 2px;
+                        justify-content: center;
                     }
-                    .eng-card-gog {
-                        font-size: 7px;
-                        color: rgba(0,255,245,0.3);
-                        letter-spacing: 2px;
-                    }
-                    .eng-card-jp {
+
+                    .holo-card-jp {
                         font-family: 'Noto Sans JP', sans-serif;
-                        font-size: 22px;
+                        font-size: 20px;
                         font-weight: 900;
                         color: #fff;
-                        line-height: 1;
+                        line-height: 1.1;
                     }
-                    .eng-card-en {
+
+                    .holo-card-en {
                         font-family: 'Orbitron', sans-serif;
-                        font-size: 7px;
+                        font-size: 8px;
                         letter-spacing: 2px;
-                        color: rgba(0,255,245,0.6);
+                        color: rgba(0, 255, 245, 0.5);
+                        margin-top: 2px;
                     }
-                    .eng-scan-line {
+
+                    .holo-card-portrait {
+                        width: 60px;
+                        height: 100%;
+                        background: #000;
+                        position: relative;
+                        border-left: 1px solid rgba(0, 255, 245, 0.2);
+                    }
+
+                    .holo-card-portrait img {
+                        width: 100%;
+                        height: 100%;
+                        object-fit: cover;
+                        object-position: top;
+                        filter: saturate(0.8) brightness(0.9);
+                    }
+
+                    .holo-scanline {
                         position: absolute;
-                        left: 0; right: 0;
+                        inset: 0;
                         height: 2px;
-                        background: linear-gradient(90deg, transparent, rgba(0,255,245,0.6), transparent);
+                        background: linear-gradient(90deg, transparent, rgba(0, 255, 245, 0.5), transparent);
+                        z-index: 5;
+                        animation: holoScanLine 2s linear infinite;
                         pointer-events: none;
-                        animation: scanLine 2s linear infinite;
                     }
-                    .result-pulse {
-                        animation: engineerPulse 1.5s ease-in-out infinite;
+
+                    .authority-marker {
+                        position: fixed;
+                        bottom: 40px;
+                        right: 40px;
+                        background: rgba(0, 0, 0, 0.5);
+                        border: 1px solid rgba(0, 255, 245, 0.4);
+                        padding: 10px 20px;
+                        backdrop-filter: blur(5px);
+                        display: flex;
+                        flex-direction: column;
+                        align-items: flex-end;
+                    }
+
+                    .authority-marker-jp {
+                        font-family: 'Noto Sans JP', sans-serif;
+                        font-size: 24px;
+                        font-weight: 900;
+                        color: rgba(0, 255, 245, 0.8);
+                        letter-spacing: 2px;
+                    }
+
+                    .authority-marker-en {
+                        font-family: 'Orbitron', sans-serif;
+                        font-size: 8px;
+                        color: rgba(0, 255, 245, 0.4);
+                        letter-spacing: 4px;
+                        margin-top: 4px;
                     }
                 `}</style>
 
@@ -162,26 +223,26 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
                     エンジニア権限
                 </div>
 
+                {/* HUD Elements */}
+                <div className="holo-hud-circle" />
+
                 {/* Title */}
                 <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{ marginTop: 60, marginBottom: 6, textAlign: 'center' }}
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    style={{ marginTop: 40, marginLeft: 160, width: '100%', textAlign: 'left' }}
                 >
                     <div style={{
-                        fontFamily: 'Orbitron', fontSize: 26, fontWeight: 900,
-                        color: '#fff', letterSpacing: 4,
+                        fontFamily: 'Orbitron', fontSize: 36, fontWeight: 900,
+                        color: '#fff', letterSpacing: 6,
                         textShadow: '0 0 20px rgba(0,255,245,0.5)',
                     }}>
                         Who will you investigate?
                     </div>
                     <div style={{ marginTop: 6, fontSize: 10, color: 'rgba(0,255,245,0.45)', letterSpacing: 4 }}>
-                        SELECT ONE CREW MEMBER TO SCAN FOR G.O.G. VIRAL SIGNATURES
+                        D.G.O. Crew Monitoring Terminal // Neural Signature Matching Active
                     </div>
                 </motion.div>
-
-                {/* Horizontal divider */}
-                <div style={{ width: '80%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,255,245,0.4), transparent)', margin: '16px 0 24px' }} />
 
                 {/* Player grid */}
                 {!actionDone ? (
@@ -190,43 +251,35 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
                         animate={{ opacity: 1 }}
                         style={{
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(3, minmax(240px, 320px))',
-                            gap: 12,
-                            width: '90%',
-                            maxWidth: 1000,
+                            gridTemplateColumns: 'repeat(3, 300px)',
+                            gap: '15px 25px',
+                            justifyContent: 'center',
+                            width: '100%',
+                            marginTop: 40,
+                            padding: '0 50px',
                         }}
                     >
                         {targets.map((p, i) => (
                             <motion.div
                                 key={p.id}
-                                className={`eng-card ${selected?.id === p.id ? 'selected-card' : ''}`}
-                                style={{ animationDelay: `${i * 0.05}s` }}
+                                className={`holo-card ${selected?.id === p.id ? 'holo-card-active' : ''}`}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.03 }}
                                 onClick={() => handleActionClick(p)}
                             >
-                                <div className="eng-scan-line" />
-                                <div className="card-suspect-label">UNIT</div>
+                                <div className="holo-scanline" />
+                                <div className="holo-card-sidebar">SUSPECT</div>
 
-                                <img src={p.avatar} alt={p.name} className="eng-card-img" />
-
-                                <div className="eng-card-info">
-                                    <div className="eng-card-gog">G.G.G. Crew &nbsp; ウイルス診断</div>
-                                    <div className="eng-card-jp">{NAME_MAP[p.name] || p.name}</div>
-                                    <div className="eng-card-en">{p.name.toUpperCase()}</div>
+                                <div className="holo-card-content">
+                                    <div style={{ fontSize: 6, color: 'rgba(0,255,245,0.3)', letterSpacing: 2, marginBottom: 2 }}>D.G.O. Crew —————</div>
+                                    <div className="holo-card-jp">{NAME_MAP[p.name] || p.name}</div>
+                                    <div className="holo-card-en">{p.name.toUpperCase()}</div>
                                 </div>
 
-                                {/* Selected indicator */}
-                                {selected?.id === p.id && (
-                                    <div style={{
-                                        position: 'absolute', right: 10,
-                                        top: '50%', transform: 'translateY(-50%)',
-                                        width: 20, height: 20,
-                                        borderRadius: '50%',
-                                        background: '#00fff5',
-                                        boxShadow: '0 0 12px #00fff5',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 12,
-                                    }}>✓</div>
-                                )}
+                                <div className="holo-card-portrait">
+                                    <img src={p.avatar} alt={p.name} />
+                                </div>
                             </motion.div>
                         ))}
                     </motion.div>
@@ -298,32 +351,10 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
                     </motion.div>
                 )}
 
-                {/* Bottom label */}
-                <div style={{
-                    position: 'fixed', bottom: 16, right: 20,
-                    fontFamily: 'Orbitron', fontSize: 12, fontWeight: 900,
-                    color: 'rgba(0,255,245,0.3)', letterSpacing: 2,
-                    border: '1px solid rgba(0,255,245,0.15)',
-                    padding: '4px 12px',
-                    background: 'rgba(0,20,40,0.8)',
-                }}>
-                    エンジニア権限<br/>
-                    <span style={{ fontSize: 8, letterSpacing: 4 }}>ENGINEER CLEARANCE</span>
-                </div>
-
-                {/* Engineer Authority Badge (Bottom Left) */}
-                <div style={{
-                    position: 'fixed', bottom: 20, left: 30,
-                    width: 100, height: 100,
-                    borderRadius: '50%',
-                    background: 'rgba(0, 20, 35, 0.9)',
-                    border: '2px solid rgba(0, 255, 245, 0.7)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 0 30px rgba(0, 255, 245, 0.5)',
-                    overflow: 'hidden',
-                    zIndex: 6001
-                }}>
-                    <img src="/images/EngineerSymbol.png" alt="Engineer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {/* Authority marker bottom right */}
+                <div className="authority-marker">
+                    <div className="authority-marker-jp">エンジニア権限</div>
+                    <div className="authority-marker-en">ENGINEER AUTHORITY</div>
                 </div>
             </div>
         );

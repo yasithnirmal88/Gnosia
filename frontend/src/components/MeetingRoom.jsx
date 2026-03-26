@@ -1042,6 +1042,41 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
         </div>
       )}
 
+      {/* ===== VOTING CONFIRM MODAL (Holographic Overlay) ===== */}
+      <AnimatePresence>
+        {confirmModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{
+              position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,10,25,0.92)', backdropFilter: 'blur(8px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: "'Share Tech Mono', monospace"
+          }}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} style={{
+                background: 'rgba(0,25,45,0.95)', border: '1px solid rgba(0,255,245,0.4)', padding: '30px', maxWidth: '450px', width: '100%',
+                position: 'relative', boxShadow: '0 0 50px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,255,245,0.1)'
+            }}>
+              <div style={{ fontFamily: 'Orbitron', fontSize: '14px', color: '#00fff5', letterSpacing: '4px', marginBottom: '25px', label: 'header' }}>COLD-SLEEP PROTOCOL</div>
+              <div style={{ display: 'flex', gap: '20px', marginBottom: '30px' }}>
+                <div style={{ width: '100px', height: '120px', border: '1px solid rgba(0,255,245,0.3)', overflow: 'hidden', position: 'relative' }}>
+                  <img src={confirmModal.avatar} alt={confirmModal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(rgba(0,255,245,0.1), transparent)', pointerEvents: 'none' }} />
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                   <div style={{ fontFamily: 'Noto Sans JP', fontSize: '26px', fontWeight: 900, color: '#fff' }}>{NAME_MAP[confirmModal.name] || confirmModal.name}</div>
+                   <div style={{ fontFamily: 'Orbitron', fontSize: '10px', color: 'rgba(0,255,245,0.6)', letterSpacing: '3px' }}>{confirmModal.name.toUpperCase()}</div>
+                </div>
+              </div>
+              <div style={{ fontSize: '12px', color: '#888', lineHeight: 1.6, marginBottom: '40px' }}>Are you certain you wish to send this crew member to cold-sleep? The ship's stability depends on identifying all Gnosia impurities.</div>
+              <div style={{ display: 'flex', gap: '15px' }}>
+                <button style={{ flex: 1, background: 'transparent', border: '1px solid #444', color: '#666', padding: '12px', cursor: 'pointer', fontFamily: 'Orbitron', fontSize: '10px' }} onClick={() => setConfirmModal(null)}>ABORT</button>
+                <button style={{ flex: 1, background: '#00fff5', color: '#000', border: 'none', padding: '12px', cursor: 'pointer', fontFamily: 'Orbitron', fontSize: '10px', fontWeight: 900, boxShadow: '0 0 15px #00fff5' }} onClick={() => {
+                   onVote && onVote(confirmModal.id);
+                   setConfirmModal(null);
+                }}>EXECUTE</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ===== WARP PHASE — HYPERSPACE (alive non-Gnosia only — NOT dead players) ===== */}
       {isWarpPhase && !isGnosia && !amIDead && (
         <div className="warp-space-overlay">

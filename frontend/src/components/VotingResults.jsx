@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
+import { motion } from 'framer-motion';
 
 const NAME_MAP = {
     "Setsu": "セツ", "Jina": "ジナ", "SQ": "SQ", "Raqio": "ラキオ", "Stella": "ステラ",
@@ -8,209 +8,206 @@ const NAME_MAP = {
     "Yuriko": "ユリコ", "Yuri": "ユーリ"
 };
 
-export default function VotingResults({ players, currentVotes }) {
-  // currentVotes is an object: { voterId: targetId }
-  
-  // Group votes by target
+export default function VotingResults({ players, currentVotes, onComplete }) {
+  // currentVotes: { voterId: targetId }
   const tallies = {};
-  players.forEach(p => tallies[p.id] = []);
-  Object.entries(currentVotes || {}).forEach(([voterId, targetId]) => {
-    if (tallies[targetId]) {
-      tallies[targetId].push(players.find(p => p.id === voterId)?.name || "Unknown");
-    }
+  players.forEach(p => tallies[p.id] = 0);
+  Object.values(currentVotes || {}).forEach(targetId => {
+    if (tallies.hasOwnProperty(targetId)) tallies[targetId]++;
   });
 
   return (
     <div className="voting-results-overlay">
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+JP:wght@700;900&display=swap');
+
         .voting-results-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 5, 20, 0.95);
-          z-index: 3000;
+          background: radial-gradient(circle at center, rgba(0, 15, 50, 0.98), rgba(0, 5, 20, 0.99));
+          z-index: 5000;
           display: flex;
           flex-direction: column;
           align-items: center;
-          padding: 40px;
+          padding: 30px;
           overflow-y: auto;
-          font-family: 'Share Tech Mono', monospace;
-        }
-
-        .results-title {
           font-family: 'Orbitron', sans-serif;
-          font-size: 24px;
-          color: #ff0040;
-          letter-spacing: 12px;
-          margin-bottom: 40px;
-          text-shadow: 0 0 10px #ff0040;
         }
 
-        .results-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-          gap: 20px;
-          width: 100%;
-          max-width: 1200px;
-        }
-
-        .result-card {
-          background: #010b1f;
-          border: 1px solid #1a3a5a;
-          height: 320px;
-          display: flex;
-          flex-direction: column;
-          position: relative;
-          overflow: hidden;
-          box-shadow: 0 5px 25px rgba(0,0,0,0.5);
-        }
-
-        .result-card.high-votes {
-          border-color: #ff0040;
-          box-shadow: 0 0 20px rgba(255, 0, 64, 0.2);
-        }
-
-        .suspect-label {
-          background: #000;
-          color: #ff0040;
-          font-family: 'Orbitron', sans-serif;
-          font-size: 8px;
-          padding: 4px;
-          text-align: center;
-          letter-spacing: 3px;
-          border-bottom: 1px solid rgba(255, 0, 64, 0.3);
-        }
-
-        .result-portrait {
-          height: 140px;
-          position: relative;
-          background: #000;
-        }
-
-        .result-portrait img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          object-position: top center;
-        }
-
-        .portrait-fade {
+        .voting-results-overlay::before {
+          content: '';
           position: absolute;
           inset: 0;
-          background: linear-gradient(to top, #010b1f 0%, transparent 100%);
+          background-image: radial-gradient(circle, rgba(0,255,245,0.03) 1px, transparent 1px);
+          background-size: 40px 40px;
+          pointer-events: none;
         }
 
-        .result-info {
-          padding: 10px;
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-
-        .result-jp-name {
-          font-family: 'Noto Sans JP', sans-serif;
-          font-size: 18px;
-          font-weight: 900;
-          color: #29b6f6;
-        }
-
-        .result-en-name {
-          font-size: 8px;
-          color: #1a3a5a;
-          letter-spacing: 2px;
-          margin-top: 2px;
-        }
-
-        .voters-container {
-          margin-top: 15px;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          width: 100%;
-          align-items: center;
-        }
-
-        .voter-name-tag {
-          font-family: 'Orbitron', sans-serif;
-          font-size: 9px;
-          color: #fff;
-          background: rgba(255, 0, 64, 0.15);
-          border: 1px solid #ff0040;
-          padding: 3px 10px;
-          width: 80%;
+        .results-header {
+          margin-bottom: 30px;
           text-align: center;
-          animation: slamIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-        }
-
-        @keyframes slamIn {
-          from { transform: scale(3) opacity(0); filter: blur(10px); }
-          to { transform: scale(1) opacity(1); filter: blur(0); }
-        }
-
-        .vote-count-badge {
-          position: absolute;
-          top: 10px;
-          right: 10px;
-          background: #ff0040;
-          color: #fff;
-          font-family: 'Orbitron', sans-serif;
-          font-size: 12px;
+          border-bottom: 2px solid rgba(0, 255, 245, 0.3);
+          width: 80%;
+          padding-bottom: 10px;
+          color: #00fff5;
+          letter-spacing: 15px;
           font-weight: 900;
-          width: 24px;
-          height: 24px;
+          font-size: 24px;
+          text-shadow: 0 0 15px #00fff5;
+        }
+
+        .results-grid-container {
+          display: grid;
+          grid-template-columns: repeat(3, 340px);
+          gap: 15px 30px;
+          justify-content: center;
+          width: 100%;
+          padding: 20px;
+        }
+
+        .vote-card {
+          position: relative;
+          height: 80px;
+          background: rgba(0, 15, 30, 0.85);
+          border: 1px solid rgba(0, 255, 245, 0.3);
+          display: flex;
+          align-items: center;
+          overflow: hidden;
+          clip-path: polygon(5% 0%, 95% 0%, 100% 25%, 100% 75%, 95% 100%, 5% 100%, 0% 75%, 0% 25%);
+          box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .vote-card.voted-most {
+          border-color: #ff0040;
+          box-shadow: 0 0 15px rgba(255, 0, 64, 0.3);
+          background: rgba(30, 0, 10, 0.85);
+        }
+
+        .vote-card-sidebar {
+          width: 25px;
+          height: 100%;
+          background: rgba(0, 255, 245, 0.1);
+          border-right: 1px solid rgba(0, 255, 245, 0.2);
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 2px;
-          box-shadow: 0 0 10px rgba(255, 0, 64, 0.5);
+          writing-mode: vertical-lr;
+          font-size: 7px;
+          letter-spacing: 4px;
+          color: rgba(0, 255, 245, 0.6);
+        }
+
+        .vote-card-portrait {
+          width: 80px;
+          height: 100%;
+          background: #000;
+          overflow: hidden;
+        }
+
+        .vote-card-portrait img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: top;
+          filter: saturate(0.8) brightness(0.9);
+        }
+
+        .vote-card-info {
+          flex: 1;
+          padding: 5px 15px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+
+        .vote-card-jp {
+          font-family: 'Noto Sans JP', sans-serif;
+          font-size: 20px;
+          font-weight: 900;
+          color: #fff;
+          line-height: 1;
+        }
+
+        .vote-card-en {
+          font-size: 8px;
+          letter-spacing: 2px;
+          color: rgba(255, 255, 255, 0.4);
+          margin-top: 4px;
+        }
+
+        .vote-badge {
+          width: 60px;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          background: linear-gradient(90deg, rgba(0, 255, 245, 0.1), rgba(0, 255, 245, 0.2));
+          border-left: 1px solid rgba(0, 255, 245, 0.4);
+        }
+
+        .vote-card.voted-most .vote-badge {
+          background: linear-gradient(90deg, rgba(255, 0, 64, 0.1), rgba(255, 0, 64, 0.3));
+          border-left-color: #ff0040;
+        }
+
+        .vote-badge-polygon {
+          width: 45px;
+          height: 55px;
+          background: rgba(0, 0, 0, 0.6);
+          border: 1px solid #00fff5;
+          clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          font-weight: 900;
+          color: #fff;
+          box-shadow: inset 0 0 10px rgba(0, 255, 245, 0.5);
+        }
+
+        .vote-card.voted-most .vote-badge-polygon {
+          border-color: #ff0040;
+          color: #ff0040;
+          text-shadow: 0 0 10px #ff0040;
         }
       `}</style>
 
       <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="results-title"
+        initial={{ opacity: 0, y: -20 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        className="results-header"
       >
-        VOTING TALLY IN PROGRESS
+        VOTING TALLY REVEAL
       </motion.div>
 
-      <div className="results-grid">
+      <div className="results-grid-container">
         {players.map((p, idx) => {
-          const votesForThisPlayer = tallies[p.id] || [];
-          if (votesForThisPlayer.length === 0) return null;
+          const voteCount = tallies[p.id] || 0;
+          const isHighest = voteCount === Math.max(...Object.values(tallies)) && voteCount > 0;
 
           return (
-            <motion.div 
+            <motion.div
               key={p.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: idx * 0.1 }}
-              className={`result-card ${votesForThisPlayer.length > 2 ? 'high-votes' : ''}`}
+              className={`vote-card ${isHighest ? 'voted-most' : ''}`}
+              initial={{ opacity: 0, scale: 0.9, x: idx % 3 === 0 ? -20 : (idx % 3 === 2 ? 20 : 0) }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              transition={{ delay: idx * 0.05, type: 'spring', stiffness: 100 }}
             >
-              <div className="suspect-label">TARGET LOG</div>
+              <div className="vote-card-sidebar">SUSPECT</div>
               
-              <div className="result-portrait">
+              <div className="vote-card-portrait">
                 <img src={p.avatar} alt={p.name} />
-                <div className="portrait-fade" />
-                <div className="vote-count-badge">
-                  {votesForThisPlayer.length}
-                </div>
               </div>
 
-              <div className="result-info">
-                <div className="result-jp-name">{NAME_MAP[p.name] || p.name}</div>
-                <div className="result-en-name">{p.name.toUpperCase()}</div>
+              <div className="vote-card-info">
+                <div className="vote-card-jp">{NAME_MAP[p.name] || p.name}</div>
+                <div className="vote-card-en">{p.name.toUpperCase()}</div>
+              </div>
 
-                <div className="voters-container">
-                  {votesForThisPlayer.map((voterName, vIdx) => (
-                    <div 
-                      key={vIdx} 
-                      className="voter-name-tag"
-                      style={{ animationDelay: `${(idx * 0.2) + (vIdx * 0.4)}s` }}
-                    >
-                      {voterName.toUpperCase()}
-                    </div>
-                  ))}
+              <div className="vote-badge">
+                <div className="vote-badge-polygon">
+                  {voteCount}
                 </div>
               </div>
             </motion.div>
@@ -219,12 +216,12 @@ export default function VotingResults({ players, currentVotes }) {
       </div>
 
       <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2 }}
-        style={{ marginTop: '50px', color: '#1a3a5a', fontSize: '10px', letterSpacing: '4px' }}
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        transition={{ delay: 3 }}
+        style={{ marginTop: 40, color: 'rgba(0, 255, 245, 0.3)', fontSize: 10, letterSpacing: 5 }}
       >
-        -- ANALYSIS COMPLETE --
+        ANALYSIS COMPLETE // PROTOCOL PROCEEDING
       </motion.div>
     </div>
   );

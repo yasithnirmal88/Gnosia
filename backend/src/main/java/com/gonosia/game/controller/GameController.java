@@ -203,6 +203,14 @@ public class GameController {
         gameService.broadcastState(room);
     }
 
+    @MessageMapping("/room/{roomCode}/chat")
+    public void sendMessage(@DestinationVariable("roomCode") String roomCode, @Payload Map<String, String> payload) {
+        Room room = roomManager.getRoom(roomCode);
+        if (room != null) {
+            messagingTemplate.convertAndSend("/topic/room/" + roomCode + "/chat", payload);
+        }
+    }
+
     @MessageMapping("/room/{roomCode}/signal")
     public void handleSignal(@DestinationVariable("roomCode") String roomCode, @Payload Map<String, Object> payload) {
         String targetId = (String) payload.get("targetId");
