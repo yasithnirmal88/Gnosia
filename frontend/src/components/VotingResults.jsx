@@ -28,20 +28,21 @@ export default function VotingResults({ players, currentVotes, phase, lastCryosl
              position: relative; z-index: 10; font-family: 'Orbitron', sans-serif;
           }
           .execution-title {
-            font-size: 10px; letter-spacing: 8px; color: #ff0040; margin-bottom: 50px; font-weight: 900;
+            font-size: 10px; letter-spacing: 8px; color: #00fff5; margin-bottom: 50px; font-weight: 900;
+            text-shadow: 0 0 10px #00fff5;
           }
           .execution-portrait {
-            width: 250px; height: 320px; border: 1px solid #ff0040; position: relative; overflow: hidden;
-            box-shadow: 0 0 40px rgba(255, 0, 64, 0.4);
+            width: 250px; height: 320px; border: 1px solid #00fff5; position: relative; overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 255, 245, 0.4);
           }
           .execution-portrait img {
-            width: 100%; height: 100%; object-fit: cover; filter: grayscale(0.5) contrast(1.2);
+            width: 100%; height: 100%; object-fit: cover; filter: saturate(0.5) brightness(1.1);
           }
           .execution-glitch {
-            position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, rgba(255,0,64,0.1) 2px, transparent 4px);
+            position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, rgba(0,255,245,0.1) 2px, transparent 4px);
             pointer-events: none; animation: scanline 4s linear infinite;
           }
-          .execution-name-jp { font-family: 'Noto Sans JP'; font-size: 40px; color: #fff; margin-top: 30px; font-weight: 900; }
+          .execution-name-jp { font-family: 'Noto Sans JP'; font-size: 40px; color: #fff; margin-top: 30px; font-weight: 900; text-shadow: 0 0 20px rgba(255,255,255,0.3); }
           .execution-name-en { font-size: 14px; letter-spacing: 10px; color: rgba(255,255,255,0.4); margin-bottom: 50px; }
           
           .status-indicator {
