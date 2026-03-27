@@ -323,7 +323,7 @@ const App = () => {
                     >
                         <div className="victory-text-container">
                             <motion.div initial={{ y: 50, scale: 2 }} animate={{ y: 0, scale: 1 }} className="victory-title">
-                                {isGnosiaWin ? 'GNOSIA HAVE WON' : 'HUMANS HAVE WON'}
+                                {isGnosiaWin ? 'GNOSIA HAVE TAKEN OVER THE SHIP' : 'HUMANS HAVE WON'}
                             </motion.div>
                             <div className="victory-subline">MISSION CONCLUDED — TERMINAL SYNC STABILIZED</div>
                             <button className="button-primary" onClick={() => window.location.reload()} style={{ marginTop: '40px', padding: '12px 40px' }}>

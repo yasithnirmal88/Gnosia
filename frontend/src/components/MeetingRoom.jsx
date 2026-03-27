@@ -974,28 +974,7 @@ export default function MeetingRoom({
         </div>
       </div>
 
-      {/* CONFIRM MODAL */}
-      {confirmModal && (
-        <div className="modal-overlay">
-          <div className="confirm-modal">
-            <div className="gog-label" style={{color: '#ff0040', marginBottom: '20px'}}>STASIS VOTE AUTHENTICATION</div>
-            <div style={{display: 'flex', gap: '20px', alignItems: 'center'}}>
-                <img src={confirmModal.avatar} style={{width: '80px', height: '100px', border: '1px solid #ff0040'}} alt="target" />
-                <div>
-                    <div style={{color: '#fff', fontSize: '24px', fontWeight: 900}}>{NAME_MAP[confirmModal.name] || confirmModal.name}</div>
-                    <div style={{color: '#ff0040', fontSize: '10px'}}>{confirmModal.name.toUpperCase()}</div>
-                </div>
-            </div>
-            <div style={{marginTop: '25px', color: '#fff', fontSize: '12px', opacity: 0.8}}>
-                Are you sure you want to select this vessel inhabitant for cold sleep? This action will sync with the central core.
-            </div>
-            <div style={{display: 'flex', gap: '15px'}}>
-                <button className="confirm-btn" style={{background: 'transparent', border: '1px solid #1a3a5a'}} onClick={() => setConfirmModal(null)}>CANCEL</button>
-                <button className="confirm-btn" onClick={handleVoteConfirm}>VOTE LOCK</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Removed legacy confirm modal — Using Holographic Overlay instead */}
 
       {/* ===== WARP PHASE — GNOSIA COUNCIL (alive Gnosia only) ===== */}
       {isWarpPhase && isGnosia && !amIDead && (
@@ -1039,11 +1018,6 @@ export default function MeetingRoom({
               ? `YOUR VOTE CAST — AWAITING CONSENSUS FROM ALL GNOSIA MEMBERS`
               : `SELECT A HUMAN TO ELIMINATE — ALL GNOSIA MUST AGREE`}
           </div>
-
-          {/* Audio nodes — alive Gnosia can hear each other during WARP */}
-          {players.filter(p => p.alive && (p.role === 'GNOSIA' || privateInfo?.partners?.includes(p.id)) && !p.self && streams[p.id]).map(p => (
-            <AudioNode key={p.id} stream={streams[p.id]} isLocal={false} volume={globalVolume} muted={finalMuted} />
-          ))}
         </div>
       )}
 
@@ -1072,10 +1046,7 @@ export default function MeetingRoom({
               <div style={{ fontSize: '12px', color: '#888', lineHeight: 1.6, marginBottom: '40px' }}>Are you certain you wish to send this crew member to cold-sleep? The ship's stability depends on identifying all Gnosia impurities.</div>
               <div style={{ display: 'flex', gap: '15px' }}>
                 <button style={{ flex: 1, background: 'transparent', border: '1px solid #444', color: '#666', padding: '12px', cursor: 'pointer', fontFamily: 'Orbitron', fontSize: '10px' }} onClick={() => setConfirmModal(null)}>ABORT</button>
-                <button style={{ flex: 1, background: '#00fff5', color: '#000', border: 'none', padding: '12px', cursor: 'pointer', fontFamily: 'Orbitron', fontSize: '10px', fontWeight: 900, boxShadow: '0 0 15px #00fff5' }} onClick={() => {
-                   onVote && onVote(confirmModal.id);
-                   setConfirmModal(null);
-                }}>EXECUTE</button>
+                <button style={{ flex: 1, background: '#00fff5', color: '#000', border: 'none', padding: '12px', cursor: 'pointer', fontFamily: 'Orbitron', fontSize: '10px', fontWeight: 900, boxShadow: '0 0 15px #00fff5' }} onClick={handleVoteConfirm}>EXECUTE</button>
               </div>
             </motion.div>
           </motion.div>
