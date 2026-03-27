@@ -106,6 +106,7 @@ const App = () => {
         const enterMeeting = async () => {
             if (room?.gameState?.phase === 'DISCUSSION' && !inMeeting) {
                 await connectToMedia(); // wait for mic — streamReady flag will fire peer creation
+                setLocalMuted(true);   // start every meeting muted — player must opt-in to speak
                 setInMeeting(true);
             } else if (room?.gameState?.phase !== 'DISCUSSION' && inMeeting) {
                 setInMeeting(false);
