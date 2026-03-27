@@ -176,11 +176,26 @@ public class GameService {
 
                 generateSmartLeviObservations(room);
 
-                state.setPhase(Phase.RESULT);
-                state.setRemainingTimeSeconds(room.getConfig().getResultTimeSeconds());
-                state.clearGnosiaVotes(); // reset for next WARP round
+                // --- Win-check AFTER Warp Kill ---
+                Role warpWinner = gameLogicService.checkWin(room);
+                if (warpWinner != null) {
+                    state.setPhase(Phase.GAME_OVER);
+                    analyticsService.endTracking(room, warpWinner);
+                    log.info("[WARP] Game over following elimination. Winner: {}", warpWinner);
+                } else {
+                    // Morning Meeting transition
+                    room.incrementMeetingRound();
+                    state.setPhase(Phase.DISCUSSION);
+                    int nextTime = room.getConfig().getDiscussionTimeForRound(room.getMeetingRound());
+                    state.setRemainingTimeSeconds(nextTime);
+                    log.info("[MEETING] Morning Round {} begins — {} seconds", room.getMeetingRound(), nextTime);
+                    
+                    // Reset per-round transient IDs
+                    state.setProtectedPlayerId(null);
+                    state.setGnosiaTargetPlayerId(null);
+                    state.clearGnosiaVotes(); // reset for next WARP round
+                }
 
-                // --- Levi: Notification ---
                 messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
                     Map.of("type", "LEVI_ANNOUNCEMENT", "audio", "notification.mp3"));
                 break;
