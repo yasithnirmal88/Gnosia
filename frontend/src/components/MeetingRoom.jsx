@@ -257,10 +257,14 @@ export default function MeetingRoom({
         }
 
         .crew-card.frozen {
-            border-color: #00ffff;
-            box-shadow: 0 0 20px rgba(0,255,255,0.4);
-            filter: hue-rotate(170deg) brightness(0.85);
+            border-color: #00fff5;
+            box-shadow: 0 0 20px rgba(0,255,245,0.4), inset 0 0 40px rgba(0,255,245,0.3);
             cursor: not-allowed;
+        }
+
+        .crew-card.frozen .bg-portrait {
+            filter: sepia(1) hue-rotate(180deg) saturate(3) brightness(0.6) contrast(1.2);
+            opacity: 0.8;
         }
 
         .crew-card.killed {

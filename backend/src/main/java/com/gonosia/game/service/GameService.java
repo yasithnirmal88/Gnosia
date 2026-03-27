@@ -100,13 +100,18 @@ public class GameService {
                 messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
                         Map.of("type", "LEVI_ANNOUNCEMENT", "audio", "end.voting.mp3"));
 
-                state.setPhase(Phase.CRYOSLEEP);
+                state.setPhase(Phase.RESULT);
                 state.setRemainingTimeSeconds(room.getConfig().getResultTimeSeconds());
+                break;
+            case RESULT:
+                state.setPhase(Phase.CRYOSLEEP);
+                state.setRemainingTimeSeconds(10); // 10 seconds for holographic execution
 
                 // --- Levi: Cold Sleep Announcement ---
-                if (selected != null) {
+                Player selectedForCryo = room.getPlayer(state.getLastCryosleptPlayerId());
+                if (selectedForCryo != null) {
                     messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
-                            Map.of("type", "LEVI_ANNOUNCEMENT", "audio", selected.getName() + ".coldsleep.mp3"));
+                            Map.of("type", "LEVI_ANNOUNCEMENT", "audio", selectedForCryo.getName() + ".coldsleep.mp3"));
                 }
                 break;
             case CRYOSLEEP:

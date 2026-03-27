@@ -125,14 +125,19 @@ public class GameController {
     @MessageMapping("/room/{roomCode}/scan")
     public void scan(@DestinationVariable("roomCode") String roomCode, @Payload Map<String, String> payload) {
         Room room = roomManager.getRoom(roomCode);
+        log.info("[SCAN] Payload received for room {}: {}", roomCode, payload);
         if (room != null && (room.getGameState().getPhase() == Phase.ROLE_ACTIONS || room.getGameState().getPhase() == Phase.WARP)) {
             Player scanner = room.getPlayer(payload.get("scannerId"));
             Player target = room.getPlayer(payload.get("targetId"));
+            log.info("[SCAN] Scanner={}, Target={}", (scanner != null ? scanner.getName() : "null"), (target != null ? target.getName() : "null"));
             if (scanner != null && scanner.isAlive() && target != null && scanner.getRole() == Role.ENGINEER) {
                 String result = target.getRole() == Role.GNOSIA ? "GNOSIA" : "HUMAN";
                 messagingTemplate.convertAndSend("/topic/user/" + scanner.getId() + "/private", 
                     Map.of("type", "SCAN_RESULT", "targetId", target.getId(), "result", result));
+                log.info("[SCAN] Result sent to {}: {}", scanner.getName(), result);
             }
+        } else {
+            log.warn("[SCAN] Invalid phase or room null. Room: {}, Phase: {}", roomCode, room != null ? room.getGameState().getPhase() : "null");
         }
     }
 

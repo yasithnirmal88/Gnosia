@@ -58,6 +58,7 @@ export const useGame = (initialRoomCode) => {
       // Subscribing once here handles room-creation, role-info, results, and signaling
       client.subscribe(`/topic/user/${playerId}/private`, (response) => {
         const info = JSON.parse(response.body);
+        console.log('[Gnosia] PRIVATE MSG Received:', info);
         
         switch (info.type) {
           case 'ROOM_CREATED':
