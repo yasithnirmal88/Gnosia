@@ -16,6 +16,7 @@ export const useGame = (initialRoomCode) => {
   const [doctorResult, setDoctorResult] = useState(null);
   const [joinError, setJoinError] = useState(null);
   const [stompReady, setStompReady] = useState(false);
+  const [streamReady, setStreamReady] = useState(false);
   const [playerId] = useState(() => {
     const stored = localStorage.getItem('gnosia_player_id');
     if (stored) return stored;
@@ -178,6 +179,9 @@ export const useGame = (initialRoomCode) => {
       const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
       userStream.current = stream;
       setStreams(prev => ({ ...prev, local: stream }));
+      const tracks = stream.getTracks();
+      console.log(`[Gnosia] Mic ready — ${tracks.length} track(s):`, tracks.map(t => t.kind + ':' + t.label));
+      setStreamReady(true); // ← signal peers can now be created safely
       return stream;
     } catch (err) {
       console.error('[Gnosia] Media access error:', err);
@@ -238,19 +242,19 @@ export const useGame = (initialRoomCode) => {
   };
 
   useEffect(() => {
-    if (room?.players && playerId && userStream.current) {
-      room.players.forEach(p => {
-        // Only initiate if the other player exists and we don't have a peer yet
-        // Deterministic initiation: the player with the "lexicographically smaller" ID initiates the call.
-        // This prevents both sides from trying to be the initiator and causing a race condition.
-        const shouldInitiate = playerId < p.id; 
-        if (p.id !== playerId && !peers.current[p.id]) {
-          console.log(`[Gnosia] WebRTC: ${shouldInitiate ? 'Initiating' : 'Awaiting'} connection with ${p.name} (${p.id})`);
-          createPeer(p.id, shouldInitiate);
-        }
-      });
-    }
-  }, [room?.players?.length, streams.local, playerId]);
+    // Guard: only run once the mic stream is confirmed AND we have players
+    if (!streamReady || !room?.players || !playerId) return;
+
+    console.log(`[Gnosia] WebRTC peer sweep — streamReady=true, players=${room.players.length}, tracks=${userStream.current?.getTracks().length ?? 0}`);
+
+    room.players.forEach(p => {
+      if (p.id === playerId || peers.current[p.id]) return;
+      // Deterministic initiator: lexicographically smaller ID starts the offer
+      const shouldInitiate = playerId < p.id;
+      console.log(`[Gnosia] WebRTC: ${shouldInitiate ? 'Initiating' : 'Awaiting'} connection with ${p.name} (${p.id})`);
+      createPeer(p.id, shouldInitiate);
+    });
+  }, [streamReady, room?.players?.length, playerId]);
 
   // Handle phase-based music transitions
   useEffect(() => {
@@ -311,6 +315,7 @@ export const useGame = (initialRoomCode) => {
     doctorResult,
     connect,
     connectToMedia,
+    streamReady,
     streams,
     sendMessage,
     vote,

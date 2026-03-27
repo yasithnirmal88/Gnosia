@@ -103,12 +103,15 @@ const App = () => {
 
     // Auto-enter meeting during DISCUSSION phase
     useEffect(() => {
-        if (room?.gameState?.phase === 'DISCUSSION' && !inMeeting) {
-            connectToMedia();
-            setInMeeting(true);
-        } else if (room?.gameState?.phase !== 'DISCUSSION' && inMeeting) {
-            setInMeeting(false);
-        }
+        const enterMeeting = async () => {
+            if (room?.gameState?.phase === 'DISCUSSION' && !inMeeting) {
+                await connectToMedia(); // wait for mic — streamReady flag will fire peer creation
+                setInMeeting(true);
+            } else if (room?.gameState?.phase !== 'DISCUSSION' && inMeeting) {
+                setInMeeting(false);
+            }
+        };
+        enterMeeting();
     }, [room?.gameState?.phase]);
 
     if (!isJoined) {
