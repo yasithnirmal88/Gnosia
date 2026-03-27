@@ -22,6 +22,8 @@ const App = () => {
     const [joinPin, setJoinPin] = useState(''); // Keep variable just to not break destructuring if any, or remove
     const [lobbyMode, setLobbyMode] = useState('MAIN'); // MAIN, JOIN, CREATE
 
+    const [pendingAction, setPendingAction] = useState(null); // { type: 'JOIN'|'CREATE', code, participants, pin }
+    
     const {
         room,
         messages,
@@ -43,7 +45,34 @@ const App = () => {
         joinError,
         setJoinError,
         subscribeToState,
+        stompReady,
     } = useGame(roomCodeInput);
+
+    useEffect(() => {
+        if (stompReady && pendingAction) {
+            if (pendingAction.type === 'JOIN') {
+                subscribeToState(pendingAction.code, null, pendingAction.pin);
+            } else if (pendingAction.type === 'CREATE') {
+                createRoom(pendingAction.code, pendingAction.participants, "");
+            }
+            setIsJoined(true);
+            setPendingAction(null);
+        }
+    }, [stompReady, pendingAction, subscribeToState, createRoom]);
+
+    const handleJoin = (e) => {
+        if (e) e.preventDefault();
+        if (roomCodeInput) {
+            setJoinError(null);
+            setPendingAction({ type: 'JOIN', code: roomCodeInput, pin: joinPin });
+            connect();
+        }
+    };
+
+    const handleCreateRoom = ({ roomCode: generatedCode, participants }) => {
+        setPendingAction({ type: 'CREATE', code: generatedCode, participants });
+        connect();
+    };
 
     const fillWithBots = () => {
         if (!room) return;
@@ -79,26 +108,6 @@ const App = () => {
             setInMeeting(false);
         }
     }, [room?.gameState?.phase]);
-
-    const handleJoin = (e) => {
-        if (e) e.preventDefault();
-        if (roomCodeInput) {
-            connect();
-            setJoinError(null);
-            setTimeout(() => {
-                subscribeToState(roomCodeInput, null, joinPin);
-                setIsJoined(true);
-            }, 800);
-        }
-    };
-
-    const handleCreateRoom = ({ roomCode: generatedCode, participants }) => {
-        connect();
-        setTimeout(() => {
-            createRoom(generatedCode, participants, "");
-            setIsJoined(true);
-        }, 500);
-    };
 
     if (!isJoined) {
         // Sub-screen: enter PIN to join

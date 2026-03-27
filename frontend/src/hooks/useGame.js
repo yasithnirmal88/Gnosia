@@ -14,6 +14,7 @@ export const useGame = (initialRoomCode) => {
   const [scanResult, setScanResult] = useState(null);
   const [doctorResult, setDoctorResult] = useState(null);
   const [joinError, setJoinError] = useState(null);
+  const [stompReady, setStompReady] = useState(false);
   const [playerId] = useState(() => {
     const stored = localStorage.getItem('gnosia_player_id');
     if (stored) return stored;
@@ -48,6 +49,7 @@ export const useGame = (initialRoomCode) => {
 
     client.onConnect = () => {
       console.log('[Gnosia] Connected to STOMP broker');
+      setStompReady(true);
 
       // ─── Centralized Player-Private Service ───
       // Subscribing once here handles room-creation, role-info, results, and signaling
@@ -94,6 +96,12 @@ export const useGame = (initialRoomCode) => {
 
     client.onStompError = (frame) => {
       console.error('[Gonosia] STOMP error:', frame.headers['message'], frame.body);
+      setStompReady(false);
+    };
+
+    client.onDisconnect = () => {
+      console.log('[Gnosia] Disconnected from STOMP broker');
+      setStompReady(false);
     };
 
     stompClient.current = client;
@@ -146,7 +154,7 @@ export const useGame = (initialRoomCode) => {
   // ─── Room Actions ────────────────────────────────────────────────────────────
 
   const createRoom = (roomCodeStr, participants, pin) => {
-    if (stompClient.current?.connected) {
+    if (stompClient.current?.connected && stompReady) {
       stompClient.current.publish({
         destination: `/app/room/create`,
         body: JSON.stringify({ playerId, roomCode: roomCodeStr, participants, pin }),
@@ -255,7 +263,7 @@ export const useGame = (initialRoomCode) => {
   // ─── Game Actions (all use @stomp/stompjs publish API) ──────────────────────
 
   const publish = (path, body) => {
-    if (stompClient.current?.connected) {
+    if (stompClient.current?.connected && stompReady) {
       stompClient.current.publish({
         destination: `/app/room/${roomCodeRef.current}/${path}`,
         body: JSON.stringify(body),
@@ -298,5 +306,6 @@ export const useGame = (initialRoomCode) => {
     joinError,
     setJoinError,
     subscribeToState,
+    stompReady,
   };
 };
