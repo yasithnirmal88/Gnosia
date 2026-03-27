@@ -8,13 +8,81 @@ const NAME_MAP = {
     "Yuriko": "ユリコ", "Yuri": "ユーリ"
 };
 
-export default function VotingResults({ players, currentVotes, onComplete }) {
+export default function VotingResults({ players, currentVotes, phase, lastCryosleptPlayerId, gnosiaStillOnboard, onComplete }) {
   // currentVotes: { voterId: targetId }
+  const selectedPlayer = players.find(p => p.id === lastCryosleptPlayerId);
+  const isExecution = phase === 'CRYOSLEEP' && selectedPlayer;
+
   const tallies = {};
   players.forEach(p => tallies[p.id] = 0);
   Object.values(currentVotes || {}).forEach(targetId => {
     if (tallies.hasOwnProperty(targetId)) tallies[targetId]++;
   });
+
+  if (isExecution) {
+    return (
+      <div className="voting-results-overlay execution-mode">
+        <style>{`
+          .execution-container {
+             display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%;
+             position: relative; z-index: 10; font-family: 'Orbitron', sans-serif;
+          }
+          .execution-title {
+            font-size: 10px; letter-spacing: 8px; color: #ff0040; margin-bottom: 50px; font-weight: 900;
+          }
+          .execution-portrait {
+            width: 250px; height: 320px; border: 1px solid #ff0040; position: relative; overflow: hidden;
+            box-shadow: 0 0 40px rgba(255, 0, 64, 0.4);
+          }
+          .execution-portrait img {
+            width: 100%; height: 100%; object-fit: cover; filter: grayscale(0.5) contrast(1.2);
+          }
+          .execution-glitch {
+            position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, rgba(255,0,64,0.1) 2px, transparent 4px);
+            pointer-events: none; animation: scanline 4s linear infinite;
+          }
+          .execution-name-jp { font-family: 'Noto Sans JP'; font-size: 40px; color: #fff; margin-top: 30px; font-weight: 900; }
+          .execution-name-en { font-size: 14px; letter-spacing: 10px; color: rgba(255,255,255,0.4); margin-bottom: 50px; }
+          
+          .status-indicator {
+            width: 400px; height: 12px; border: 1px solid rgba(255,255,255,0.2); position: relative; background: #000;
+          }
+          .status-bar {
+            height: 100%; transition: width 1s ease;
+            background: #ff0040; box-shadow: 0 0 15px #ff0040;
+          }
+          .status-label {
+             font-size: 8px; color: #ff0040; margin-top: 10px; letter-spacing: 3px; font-weight: 900;
+          }
+
+          @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+        `}</style>
+
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="execution-container">
+            <div className="execution-title">STASIS PROTOCOL INITIATED</div>
+            
+            <motion.div initial={{ scale: 0.8, rotateY: 90 }} animate={{ scale: 1, rotateY: 0 }} transition={{ duration: 0.8 }} className="execution-portrait">
+                <img src={selectedPlayer.avatar} alt={selectedPlayer.name} />
+                <div className="execution-glitch" />
+            </motion.div>
+
+            <div className="execution-name-jp">{NAME_MAP[selectedPlayer.name] || selectedPlayer.name}</div>
+            <div className="execution-name-en">{selectedPlayer.name.toUpperCase()}</div>
+
+            {gnosiaStillOnboard ? (
+                <>
+                    <div className="status-indicator">
+                        <motion.div initial={{ width: 0 }} animate={{ width: '100%' }} transition={{ delay: 1, duration: 2 }} className="status-bar" />
+                    </div>
+                    <div className="status-label">⚠ GNOSIA THREAT DETECTED ONBOARD ⚠</div>
+                </>
+            ) : (
+                <div style={{ color: '#00fff5', fontSize: 10, letterSpacing: 4 }}>NO GNOSIA SIGNATURES DETECTED</div>
+            )}
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="voting-results-overlay">

@@ -909,3 +909,69 @@
   background-image: radial-gradient(circle at center, rgba(0, 210, 106, 0.2) 0%, transparent 80%);
   border: 4px solid #00d26a;
 }
+
+/* GAME OVER OVERLAYS */
+.game-over-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: #000;
+  font-family: 'Orbitron', sans-serif;
+  overflow: hidden;
+}
+
+.game-over-overlay.humans-win {
+  background: radial-gradient(circle at center, rgba(0, 50, 20, 0.95), #000);
+  border: 4px solid rgba(0, 255, 120, 0.2);
+}
+
+.game-over-overlay.gnosia-wins {
+  background: radial-gradient(circle at center, rgba(50, 0, 10, 0.95), #000);
+  border: 4px solid rgba(255, 0, 64, 0.2);
+}
+
+.victory-text-container {
+  text-align: center;
+  z-index: 10;
+}
+
+.victory-title {
+  font-size: 80px;
+  font-weight: 950;
+  letter-spacing: 20px;
+  margin-bottom: 20px;
+  text-shadow: 0 0 40px currentColor;
+}
+
+.humans-win .victory-title { color: #00ff78; }
+.gnosia-wins .victory-title { color: #ff0040; }
+
+.victory-subline {
+  font-size: 14px;
+  letter-spacing: 12px;
+  color: rgba(255,255,255,0.4);
+  font-weight: 400;
+}
+
+.victory-light-beam {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 1px;
+  height: 1px;
+  box-shadow: 0 0 500px 200px currentColor;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.humans-win .victory-light-beam { color: #00ff78; }
+.gnosia-wins .victory-light-beam { color: #ff0040; }
+
+.app-container.gnosia-win { border: 2px solid #ff0040; box-shadow: inset 0 0 100px rgba(255,0,64,0.1); }
+.app-container.human-win { border: 2px solid #00ff78; box-shadow: inset 0 0 100px rgba(0,255,120,0.1); }
+

@@ -88,6 +88,11 @@ public class GameService {
                     analyticsService.trackElimination(room, targetId);
                 }
 
+                // Check for remaining Gnosia
+                boolean gnosiaRemaining = room.getPlayers().stream()
+                        .anyMatch(p -> p.isAlive() && p.getRole() == Role.GNOSIA);
+                state.setGnosiaStillOnboard(gnosiaRemaining);
+
                 // Behavioral analysis for psychological feedback
                 detectBehavioralPatterns(room);
                 

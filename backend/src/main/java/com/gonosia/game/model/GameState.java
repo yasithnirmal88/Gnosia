@@ -18,6 +18,7 @@ public class GameState {
     private Map<String, String> gnosiaVotes = new HashMap<>(); // GnosiaID -> TargetID (WARP phase consensus)
     private Map<String, String> votingResults = new HashMap<>(); // VoterID -> TargetID (revealed results)
     private Role winner; // To store the game winner (HUMAN or GNOSIA)
+    private boolean gnosiaStillOnboard;
 
     public GameState() {}
 
@@ -78,6 +79,9 @@ public class GameState {
     
     public Role getWinner() { return winner; }
     public void setWinner(Role winner) { this.winner = winner; }
+
+    public boolean isGnosiaStillOnboard() { return gnosiaStillOnboard; }
+    public void setGnosiaStillOnboard(boolean gnosiaStillOnboard) { this.gnosiaStillOnboard = gnosiaStillOnboard; }
 
     public static GameStateBuilder builder() { return new GameStateBuilder(); }
 

@@ -268,6 +268,9 @@ const App = () => {
                             <VotingResults 
                                 players={room.players} 
                                 currentVotes={room.gameState.currentVotes} 
+                                phase={currentPhase}
+                                lastCryosleptPlayerId={room.gameState.lastCryosleptPlayerId}
+                                gnosiaStillOnboard={room.gameState.gnosiaStillOnboard}
                             />
                         )}
                     </AnimatePresence>
@@ -305,6 +308,28 @@ const App = () => {
 
                 </main>
             </div>
+
+            {/* GAME OVER OVERLAY */}
+            <AnimatePresence>
+                {isGameOver && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        className={`game-over-overlay ${isGnosiaWin ? 'gnosia-wins' : 'humans-win'}`}
+                    >
+                        <div className="victory-text-container">
+                            <motion.div initial={{ y: 50, scale: 2 }} animate={{ y: 0, scale: 1 }} className="victory-title">
+                                {isGnosiaWin ? 'GNOSIA HAVE WON' : 'HUMANS HAVE WON'}
+                            </motion.div>
+                            <div className="victory-subline">MISSION CONCLUDED — TERMINAL SYNC STABILIZED</div>
+                            <button className="button-primary" onClick={() => window.location.reload()} style={{ marginTop: '40px', padding: '12px 40px' }}>
+                                NEW CYCLE
+                            </button>
+                        </div>
+                        <div className="victory-light-beam" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Smart Levi AI Notifications */}
             <AnimatePresence>
