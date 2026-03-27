@@ -39,6 +39,7 @@ export const useGame = (initialRoomCode) => {
   // ─── WebSocket Connection ────────────────────────────────────────────────────
 
   const connect = () => {
+    setStompReady(false); // Reset readiness for the new connection attempt
     const client = new Client({
       webSocketFactory: () => new SockJS(SOCKET_URL),
       debug: () => {},
