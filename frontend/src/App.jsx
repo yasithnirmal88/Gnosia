@@ -236,7 +236,7 @@ const App = () => {
             <div className="game-body">
                 <main className="player-grid terminal-grid">
                     <AnimatePresence>
-                        {(inMeeting || currentPhase === 'WARP' || currentPhase === 'INTRO') && (
+                        {(inMeeting || currentPhase === 'VOTING' || currentPhase === 'DISCUSSION' || currentPhase === 'WARP' || currentPhase === 'INTRO') && (
                             <VoiceCommsOverlay 
                                 players={room.players} 
                                 streams={streams} 
