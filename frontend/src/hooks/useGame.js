@@ -10,6 +10,7 @@ export const useGame = (initialRoomCode) => {
   const [roomCode, setRoomCode] = useState(initialRoomCode);
   const [room, setRoom] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [dmMessages, setDmMessages] = useState({}); // { partnerId: [msg, msg] }
   const [privateInfo, setPrivateInfo] = useState(null);
   const [scanResult, setScanResult] = useState(null);
   const [doctorResult, setDoctorResult] = useState(null);
@@ -78,6 +79,13 @@ export const useGame = (initialRoomCode) => {
             break;
           case 'WARP_CHAT':
             setMessages(prev => [...prev, info.message]);
+            break;
+          case 'DM':
+            setDmMessages(prev => {
+                const partnerId = info.withId;
+                const current = prev[partnerId] || [];
+                return { ...prev, [partnerId]: [...current, info.message] };
+            });
             break;
         }
       });
@@ -282,6 +290,15 @@ export const useGame = (initialRoomCode) => {
   const protect    = (targetId) => publish('protect',     { gaId: playerId, targetId });
   const doctorCheck = (targetId) => publish('doctorCheck', { doctorId: playerId, targetId });
   const kill       = (targetId) => publish('kill',        { voterId: playerId, targetId });
+  const sendDm = (targetId, content) => {
+    if (stompClient.current?.connected && stompReady) {
+      stompClient.current.publish({
+        destination: `/app/room/${roomCodeRef.current}/dm`,
+        body: JSON.stringify({ senderId: playerId, targetId, content }),
+      });
+    }
+  };
+
   const startGame  = ()         => publish('start',       {});
 
   // ─── Exports ─────────────────────────────────────────────────────────────────
@@ -308,5 +325,7 @@ export const useGame = (initialRoomCode) => {
     setJoinError,
     subscribeToState,
     stompReady,
+    dmMessages,
+    sendDm,
   };
 };

@@ -45,4 +45,22 @@ public class ChatController {
             messagingTemplate.convertAndSend("/topic/room/" + roomCode + "/chat", message);
         }
     }
+
+    @MessageMapping("/room/{roomCode}/dm")
+    public void handleDm(@DestinationVariable String roomCode, @Payload Map<String, String> payload) {
+        String senderId = payload.get("senderId");
+        String targetId = payload.get("targetId");
+        String content = payload.get("content");
+        
+        ChatMessage msg = new ChatMessage();
+        msg.setSenderId(senderId);
+        msg.setContent(content);
+        
+        // Forward to BOTH sender and recipient so they both have the log
+        messagingTemplate.convertAndSendToUser(senderId, "/queue/private", 
+            Map.of("type", "DM", "message", msg, "withId", targetId));
+            
+        messagingTemplate.convertAndSendToUser(targetId, "/queue/private", 
+            Map.of("type", "DM", "message", msg, "withId", senderId));
+    }
 }

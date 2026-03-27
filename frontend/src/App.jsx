@@ -46,6 +46,8 @@ const App = () => {
         setJoinError,
         subscribeToState,
         stompReady,
+        dmMessages,
+        sendDm,
     } = useGame(roomCodeInput);
 
     useEffect(() => {
@@ -252,6 +254,10 @@ const App = () => {
                                 onKill={kill}
                                 playerName={room.players.find(p => p.id === playerId)?.name}
                                 room={room}
+                                messages={messages}
+                                dmMessages={dmMessages}
+                                sendMessage={sendMessage}
+                                onDm={sendDm}
                             />
                         )}
                     </AnimatePresence>

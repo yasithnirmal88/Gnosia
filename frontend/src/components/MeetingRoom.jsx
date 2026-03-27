@@ -32,7 +32,11 @@ const NAME_MAP = {
     "Yuriko": "ユリコ", "Yuri": "ユーリ"
 };
 
-export default function MeetingRoom({ players=[], streams={}, currentPhase, role, privateInfo, playerId, localMuted, setLocalMuted, globalVolume, setGlobalVolume, onVote, onKill, playerName, room }) {
+export default function MeetingRoom({ 
+  players=[], streams={}, currentPhase, role, privateInfo, playerId, 
+  localMuted, setLocalMuted, globalVolume, setGlobalVolume, onVote, onKill, 
+  playerName, room, messages=[], dmMessages={}, sendMessage, onDm 
+}) {
   const [voteLocked, setVoteLocked] = useState(false);
   const [selectedForVote, setSelectedForVote] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null);
@@ -91,13 +95,13 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
   };
 
   const sendDm = () => {
-    if (!dmInput.trim() || !dmTarget) return;
-    setDmHistory(h => ({ ...h, [dmTarget.id]: [...(h[dmTarget.id]||[]), { from:"you", text:dmInput.trim() }] }));
+    if (!dmInput.trim() || !dmTarget || !onDm) return;
+    onDm(dmTarget.id, dmInput.trim());
     setDmInput("");
   };
 
-  const msgs = dmTarget ? (dmHistory[dmTarget.id] || []) : [];
-  const unreadCount = Object.values(dmHistory).flat().filter(m => m.from !== "you").length;
+  const msgs = dmTarget ? (dmMessages[dmTarget.id] || []) : [];
+  const unreadCount = Object.values(dmMessages).flat().filter(m => m.senderId !== playerId).length;
 
   return (
     <div className="game-flow-container">
@@ -944,9 +948,9 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
                 <>
                     <div ref={dmRef} style={{flex: 1, overflowY: 'auto', padding: '15px', color: '#fff', fontSize: '11px'}}>
                         {msgs.map((m, i) => (
-                            <div key={i} style={{marginBottom: '10px', textAlign: m.from === 'you' ? 'right' : 'left'}}>
-                                <div style={{display: 'inline-block', padding: '8px 12px', background: m.from === 'you' ? '#29b6f622' : '#ffffff11', border: `1px solid ${m.from === 'you' ? '#29b6f633' : '#ffffff22'}`, borderRadius: '4px'}}>
-                                    {m.text}
+                            <div key={i} style={{marginBottom: '10px', textAlign: m.senderId === playerId ? 'right' : 'left'}}>
+                                <div style={{display: 'inline-block', padding: '8px 12px', background: m.senderId === playerId ? '#29b6f622' : '#ffffff11', border: `1px solid ${m.senderId === playerId ? '#29b6f633' : '#ffffff22'}`, borderRadius: '4px'}}>
+                                    {m.content}
                                 </div>
                             </div>
                         ))}
@@ -1127,6 +1131,33 @@ export default function MeetingRoom({ players=[], streams={}, currentPhase, role
           }}>GHOST PROTOCOL ACTIVE — OBSERVE ONLY — INTERACTION DISABLED</span>
         </div>
       )}
+
+      {/* PUBLIC MESSAGE LOG (Holographic Overlay) */}
+      <div style={{
+          position: 'fixed', bottom: '100px', left: '25px', zIndex: 100, width: '280px',
+          maxHeight: '180px', pointerEvents: 'none', display: 'flex', flexDirection: 'column-reverse',
+          gap: '8px', overflow: 'hidden'
+      }}>
+          <AnimatePresence>
+            {messages.slice(-6).map((m, i) => (
+                <motion.div 
+                    key={i} 
+                    initial={{ opacity: 0, x: -20 }} 
+                    animate={{ opacity: 1, x: 0 }}
+                    style={{
+                        background: 'rgba(0, 15, 30, 0.65)', borderLeft: '3px solid #00fff5',
+                        padding: '6px 12px', fontSize: '11px', color: 'rgba(255,255,255,0.8)',
+                        fontFamily: "'Share Tech Mono', monospace", backdropFilter: 'blur(2px)'
+                    }}
+                >
+                    <span style={{ color: '#00fff5', fontWeight: 900, marginRight: '8px' }}>
+                        {m.senderName.toUpperCase()}:
+                    </span>
+                    {m.content}
+                </motion.div>
+            ))}
+          </AnimatePresence>
+      </div>
 
     </div>
   );
