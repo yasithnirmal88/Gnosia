@@ -6,10 +6,10 @@ const AudioNode = ({ stream, isLocal, volume, muted }) => {
     const audioRef = useRef();
 
     useEffect(() => {
-        if (audioRef.current && stream && !isLocal) {
+        if (audioRef.current && stream) {
             audioRef.current.srcObject = stream;
         }
-    }, [stream, isLocal]);
+    }, [stream]);
 
     useEffect(() => {
         if (audioRef.current) {
@@ -69,14 +69,12 @@ export default function MeetingRoom({
   }, [finalMuted, streams?.local]);
 
   const canHear = (p) => {
-    // Spectators (dead) can hear all alive players during DISCUSSION
+    if (p.id === playerId) return false;
     if (isWarpPhase) {
-      if (amIDead) return false; // Dead players can't hear WARP channel (secret)
-      // During WARP, alive Gnosia can only hear fellow Gnosia
-      return isGnosia && (p.role === 'GNOSIA' || p.self || (privateInfo?.partners?.includes(p.id)));
+      if (amIDead) return false;
+      return isGnosia && (p.role === 'GNOSIA' || privateInfo?.partners?.includes(p.id));
     }
-    // During DISCUSSION: dead players can hear everyone alive (spectate)
-    return p.alive;
+    return p.alive !== false;
   };
 
   useEffect(() => {
@@ -874,9 +872,9 @@ export default function MeetingRoom({
               {hasStream && (
                 <AudioNode
                   stream={streams[p.id]}
-                  isLocal={p.self}
-                  volume={isSpeaking ? globalVolume : 0}
-                  muted={!isSpeaking}
+                  isLocal={p.id === playerId}
+                  volume={canHear(p) ? globalVolume : 0}
+                  muted={p.id === playerId || !canHear(p)}
                 />
               )}
             </div>
