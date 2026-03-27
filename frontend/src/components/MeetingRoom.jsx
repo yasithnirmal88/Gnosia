@@ -44,6 +44,7 @@ export default function MeetingRoom({
   const [dmOpen, setDmOpen] = useState(false);
   const [dmHistory, setDmHistory] = useState({});
   const [dmInput, setDmInput] = useState("");
+  const [publicChatInput, setPublicChatInput] = useState("");
   const [warpCouncilTarget, setWarpCouncilTarget] = useState(null); // Gnosia's chosen victim
   const dmRef = useRef(null);
 
@@ -81,6 +82,14 @@ export default function MeetingRoom({
   useEffect(() => {
     if (dmRef.current) dmRef.current.scrollTop = dmRef.current.scrollHeight;
   }, [dmHistory, dmTarget]);
+
+  // Critical: Reset the vote locking mechanism when a new voting phase starts
+  useEffect(() => {
+    if (currentPhase === 'VOTING') {
+      setVoteLocked(false);
+      setSelectedForVote(null);
+    }
+  }, [currentPhase]);
 
   const votes = room?.gameState?.currentVotes || {};
   const votingResults = room?.gameState?.votingResults || {};
@@ -1133,6 +1142,39 @@ export default function MeetingRoom({
             ))}
           </AnimatePresence>
       </div>
+
+      {/* PUBLIC CHAT INPUT */}
+      {!amIDead && (
+        <div style={{
+            position: 'fixed', bottom: '65px', left: '25px', zIndex: 100, width: '280px',
+            display: 'flex', border: '1px solid rgba(0, 255, 245, 0.4)', background: 'rgba(0,10,25,0.85)'
+        }}>
+            <input
+                type="text"
+                value={publicChatInput}
+                onChange={(e) => setPublicChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && publicChatInput.trim().length > 0) {
+                        sendMessage && sendMessage(publicChatInput.trim());
+                        setPublicChatInput("");
+                    }
+                }}
+                disabled={amIDead}
+                placeholder={amIDead ? "COMMS DISABLED" : "BROADCAST..."}
+                style={{ flex: 1, background: 'transparent', border: 'none', color: '#00fff5', padding: '10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '12px', outline: 'none' }}
+            />
+            <button 
+                onClick={() => { 
+                    if (publicChatInput.trim().length > 0) {
+                       sendMessage && sendMessage(publicChatInput.trim());
+                       setPublicChatInput(""); 
+                    }
+                }} 
+                disabled={amIDead || publicChatInput.trim().length === 0}
+                style={{ background: 'rgba(0,255,245,0.2)', color: '#00fff5', border: 'none', borderLeft: '1px solid rgba(0,255,245,0.4)', padding: '0 15px', fontFamily: 'Orbitron', fontWeight: 900, cursor: 'pointer' }}
+            >SEND</button>
+        </div>
+      )}
 
     </div>
   );

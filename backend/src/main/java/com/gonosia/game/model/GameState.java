@@ -53,13 +53,19 @@ public class GameState {
     public void setCurrentVotes(Map<String, String> currentVotes) { this.currentVotes = currentVotes; }
 
     public String getLastCryosleptPlayerId() { return lastCryosleptPlayerId; }
-    public void setLastCryosleptPlayerId(String lastCryosleptPlayerId) { this.lastCryosleptPlayerId = lastCryosleptPlayerId; }
+    public void setLastCryosleptPlayerId(String lastCryosleptPlayerId) { 
+        this.lastCryosleptPlayerId = (lastCryosleptPlayerId == null) ? "" : lastCryosleptPlayerId; 
+    }
 
     public String getProtectedPlayerId() { return protectedPlayerId; }
-    public void setProtectedPlayerId(String protectedPlayerId) { this.protectedPlayerId = protectedPlayerId; }
+    public void setProtectedPlayerId(String protectedPlayerId) { 
+        this.protectedPlayerId = (protectedPlayerId == null) ? "" : protectedPlayerId; 
+    }
 
     public String getGnosiaTargetPlayerId() { return gnosiaTargetPlayerId; }
-    public void setGnosiaTargetPlayerId(String gnosiaTargetPlayerId) { this.gnosiaTargetPlayerId = gnosiaTargetPlayerId; }
+    public void setGnosiaTargetPlayerId(String gnosiaTargetPlayerId) { 
+        this.gnosiaTargetPlayerId = (gnosiaTargetPlayerId == null) ? "" : gnosiaTargetPlayerId; 
+    }
 
     public Map<String, String> getLastRoleResults() { return lastRoleResults; }
     public void setLastRoleResults(Map<String, String> lastRoleResults) { this.lastRoleResults = lastRoleResults; }
