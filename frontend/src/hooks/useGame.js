@@ -190,6 +190,7 @@ export const useGame = (initialRoomCode) => {
   };
 
   const createPeer = (targetId, initiator, initialSignal = null) => {
+    console.log('[Gnosia] createPeer called:', { targetId, initiator, hasStream: !!userStream.current, tracks: userStream.current?.getTracks().length });
     if (!userStream.current) return;
 
     const peer = new Peer({
@@ -226,6 +227,7 @@ export const useGame = (initialRoomCode) => {
     });
 
     peer.on('signal', signal => {
+      console.log('[Gnosia] Sending signal to:', targetId, signal.type);
       if (stompClient.current?.connected) {
         stompClient.current.publish({
           destination: `/app/room/${roomCodeRef.current}/signal`,
@@ -234,8 +236,25 @@ export const useGame = (initialRoomCode) => {
       }
     });
 
+    peer.on('connect', () => {
+      console.log('[Gnosia] Peer CONNECTED with:', targetId);
+    });
+
     peer.on('stream', stream => {
+      console.log('[Gnosia] Got stream from:', targetId, 'tracks:', stream.getTracks().length);
       setStreams(prev => ({ ...prev, [targetId]: stream }));
+    });
+
+    peer.on('error', (err) => {
+      console.error('[Gnosia] Peer ERROR with:', targetId, err);
+    });
+
+    peer.on('iceStateChange', (state) => {
+      console.log('[Gnosia] ICE state with', targetId, ':', state);
+    });
+
+    peer.on('close', () => {
+      console.log('[Gnosia] Peer CLOSED with:', targetId);
     });
 
     if (initialSignal) peer.signal(initialSignal);
