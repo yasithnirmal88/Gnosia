@@ -210,31 +210,7 @@ public class GameService {
                     Map.of("type", "LEVI_ANNOUNCEMENT", "audio", "notification.mp3"));
                 break;
             }
-            case RESULT:
-                // --- Win-check BEFORE opening a new meeting ---
-                // If Gonosia count >= humans, Gonosia has taken over the ship — no more
-                // meetings.
-                Role gameWinner = gameLogicService.checkWin(room);
-                if (gameWinner != null) {
-                    state.setPhase(Phase.GAME_OVER);
-                    analyticsService.endTracking(room, gameWinner);
-                    if (gameWinner == Role.GNOSIA) {
-                        log.info("[GNOSIA] Ship takeover confirmed. No further meetings. Gnosia wins in room {}",
-                                room.getRoomCode());
-                    }
-                } else {
-                    // Continue — next meeting
-                    room.incrementMeetingRound();
-                    state.setPhase(Phase.DISCUSSION);
-                    int nextTime = room.getConfig().getDiscussionTimeForRound(room.getMeetingRound());
-                    state.setRemainingTimeSeconds(nextTime);
-                    log.info("[MEETING] Round {} begins — {} seconds", room.getMeetingRound(), nextTime);
-                }
-                // Reset per-round transient IDs
-                state.setProtectedPlayerId(null);
-                state.setGnosiaTargetPlayerId(null);
-                state.clearVotes();
-                break;
+
             default:
                 break;
         }
