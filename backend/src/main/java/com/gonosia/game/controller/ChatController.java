@@ -32,11 +32,11 @@ public class ChatController {
         if (currentPhase == Phase.WARP) {
             // Only Gnosia can chat in Warp
             if (sender.getRole() == Role.GNOSIA) {
-                // Broadcast to each Gnosia privately
+                // Broadcast to each Gnosia privately using explicit topic (matches client subscription)
                 room.getPlayers().stream()
                         .filter(p -> p.getRole() == Role.GNOSIA)
                         .forEach(p -> {
-                            messagingTemplate.convertAndSendToUser(p.getId(), "/queue/private", 
+                            messagingTemplate.convertAndSend("/topic/user/" + p.getId() + "/private",
                                 Map.of("type", "WARP_CHAT", "message", message));
                         });
             }
@@ -56,11 +56,11 @@ public class ChatController {
         msg.setSenderId(senderId);
         msg.setContent(content);
         
-        // Forward to BOTH sender and recipient so they both have the log
-        messagingTemplate.convertAndSendToUser(senderId, "/queue/private", 
+        // Forward to BOTH sender and recipient using explicit topics (matches client subscription)
+        messagingTemplate.convertAndSend("/topic/user/" + senderId + "/private",
             Map.of("type", "DM", "message", msg, "withId", targetId));
-            
-        messagingTemplate.convertAndSendToUser(targetId, "/queue/private", 
+
+        messagingTemplate.convertAndSend("/topic/user/" + targetId + "/private",
             Map.of("type", "DM", "message", msg, "withId", senderId));
     }
 }

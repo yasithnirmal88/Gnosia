@@ -285,9 +285,9 @@ export const useGame = (initialRoomCode) => {
         LeviAudio.play(phase);
       } else if (phase === 'CRYOSLEEP' || phase === 'RESULT') {
         LeviAudio.play('COLD_SLEEP');
-      } else if (phase === 'END') {
+      } else if (phase === 'GAME_OVER') {
         // Handle victory music based on winner
-        const winner = room.gameState.winner; // This would be populated in Phase.END
+        const winner = room.gameState.winner;
         LeviAudio.play(winner === 'GNOSIA' ? 'VICTORY_GNOSIA' : 'VICTORY_HUMAN');
       }
     }

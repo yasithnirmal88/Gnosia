@@ -948,7 +948,7 @@ export default function MeetingRoom({
         
         <div style={{flex: 1, display: 'flex', flexDirection: 'column', p: '10px'}}>
             <div style={{padding: '10px', display: 'flex', gap: '10px', overflowX: 'auto'}}>
-                {players.filter(p => !p.self && p.alive).map(p => (
+                {players.filter(p => p.id !== playerId && p.alive).map(p => (
                     <div key={p.id} onClick={() => setDmTarget(p)} style={{cursor: 'pointer', opacity: dmTarget?.id === p.id ? 1 : 0.5}}>
                         <img src={p.avatar} style={{width: '40px', height: '40px', borderRadius: '50%', border: dmTarget?.id === p.id ? '2px solid #29b6f6' : 'none'}} alt={p.name} />
                     </div>
