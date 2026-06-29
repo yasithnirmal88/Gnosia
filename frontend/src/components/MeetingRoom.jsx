@@ -1,36 +1,29 @@
 import { useState, useEffect, useRef } from "react";
-import { Mic, MicOff, Volume2, VolumeX, MessageSquare, Shield, Info, Heart, Zap, Target } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AudioNode = ({ stream, isLocal, volume, muted }) => {
     const audioRef = useRef();
 
     useEffect(() => {
-        if (audioRef.current && stream) {
-            audioRef.current.srcObject = stream;
+        const el = audioRef.current;
+        if (!el) return;
+        if (stream) {
+            el.srcObject = stream;
         }
-    }, [stream]);
-
-    useEffect(() => {
-        if (audioRef.current) {
-            audioRef.current.volume = volume;
-            audioRef.current.muted = muted || isLocal;
-            if (!muted && !isLocal && audioRef.current.srcObject) {
-              audioRef.current.play().catch(e => console.warn("[Gnosia] Audio play error:", e));
-            }
+        el.volume = volume;
+        el.muted = muted || isLocal;
+        if (!muted && !isLocal && el.srcObject) {
+            el.play().catch(e => console.warn("[Gnosia] Audio play error:", e));
         }
-    }, [volume, muted, isLocal]);
+    }, [stream, volume, muted, isLocal]);
 
     if (isLocal) return null;
     return <audio ref={audioRef} autoPlay playsInline />;
 };
 
-const NAME_MAP = {
-    "Setsu": "セツ", "Jina": "ジナ", "SQ": "SQ", "Raqio": "ラキオ", "Stella": "ステラ",
-    "Shigemichi": "シゲミチ", "Chipie": "チピエ", "Comet": "コメット", "Jonas": "ジョナス",
-    "Kukurushka": "クルーシュカ", "Otome": "オトメ", "Sha-ming": "シャーミン", "Remnan": "レムナン",
-    "Yuriko": "ユリコ", "Yuri": "ユーリ"
-};
+import { LeviAudio } from '../audio/LeviAudio';
+import { NAME_MAP } from '../constants';
 
 export default function MeetingRoom({ 
   players=[], streams={}, currentPhase, role, privateInfo, playerId, 
@@ -71,7 +64,7 @@ export default function MeetingRoom({
   const canHear = (p) => {
     if (p.id === playerId) return false;
     if (isWarpPhase) {
-      if (amIDead) return false;
+      if (amIDead) return p.alive !== false;
       return isGnosia && (p.role === 'GNOSIA' || privateInfo?.partners?.includes(p.id));
     }
     return p.alive !== false;
@@ -80,6 +73,22 @@ export default function MeetingRoom({
   useEffect(() => {
     if (dmRef.current) dmRef.current.scrollTop = dmRef.current.scrollHeight;
   }, [dmHistory, dmTarget]);
+
+  // Resume audio on any user gesture (browser autoplay policy workaround)
+  useEffect(() => {
+    const handler = () => {
+      document.querySelectorAll('audio[srcObject]').forEach(el => {
+        if (el.paused) el.play().catch(() => {});
+      });
+      LeviAudio.resumeAll();
+    };
+    document.addEventListener('click', handler, { once: true });
+    document.addEventListener('touchstart', handler, { once: true });
+    return () => {
+      document.removeEventListener('click', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, []);
 
   // Critical: Reset the vote locking mechanism when a new voting phase starts
   useEffect(() => {
@@ -91,7 +100,7 @@ export default function MeetingRoom({
 
   const votes = room?.gameState?.currentVotes || {};
   const votingResults = room?.gameState?.votingResults || {};
-  const hasGnosia = currentPhase !== 'GAME_OVER' || room?.gameState?.winner !== 'HUMAN';
+  const hasGnosia = room?.gameState?.gnosiaStillOnboard === true;
 
   const handleVoteConfirm = () => {
     if (!confirmModal) return;
@@ -841,6 +850,11 @@ export default function MeetingRoom({
                 </>
               )}
 
+              {/* Voted-for indicator during VOTING phase */}
+              {currentPhase === 'VOTING' && selectedForVote === p.id && (
+                <div className="vote-cast-tag">YOU VOTED</div>
+              )}
+
               {/* Vote counter during CRYOSLEEP */}
               {room?.gameState?.phase === 'CRYOSLEEP' && votesForThisPlayer > 0 && (
                 <div className="vote-counter">{votesForThisPlayer}</div>
@@ -1121,9 +1135,9 @@ export default function MeetingRoom({
           gap: '8px', overflow: 'hidden'
       }}>
           <AnimatePresence>
-            {messages.slice(-6).map((m, i) => (
+            {messages.slice(-6).map((m) => (
                 <motion.div 
-                    key={i} 
+                    key={m.id || m.timestamp || Math.random()} 
                     initial={{ opacity: 0, x: -20 }} 
                     animate={{ opacity: 1, x: 0 }}
                     style={{

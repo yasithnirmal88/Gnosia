@@ -1,7 +1,6 @@
-import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid } from 'recharts';
-import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, Users, Clock, Hash } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { motion } from 'framer-motion';
+import { TrendingUp, Clock, Hash } from 'lucide-react';
 
 const AnalyticsDashboard = ({ room }) => {
     if (!room) return null;
@@ -9,8 +8,8 @@ const AnalyticsDashboard = ({ room }) => {
     const players = room.players;
     const history = room.votingHistory || [];
 
-    // Data for Vote Distribution per Round
     const getRoundData = (roundIndex) => {
+        if (roundIndex < 0 || !history.length) return [];
         const roundVotes = history[roundIndex] || {};
         const countMap = {};
         players.forEach(p => countMap[p.name] = 0);

@@ -4,6 +4,8 @@ backend/.mvn/
 *.class
 *.jar
 *.war
+*.log
+*.err
 
 # Frontend
 frontend/node_modules/

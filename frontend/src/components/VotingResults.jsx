@@ -1,14 +1,7 @@
-import React from 'react';
 import { motion } from 'framer-motion';
+import { NAME_MAP } from '../constants';
 
-const NAME_MAP = {
-    "Setsu": "セツ", "Jina": "ジナ", "SQ": "SQ", "Raqio": "ラキオ", "Stella": "ステラ",
-    "Shigemichi": "シゲミチ", "Chipie": "チピエ", "Comet": "コメット", "Jonas": "ジョナス",
-    "Kukurushka": "クルーシュカ", "Otome": "オトメ", "Sha-ming": "シャーミン", "Remnan": "レムナン",
-    "Yuriko": "ユリコ", "Yuri": "ユーリ"
-};
-
-export default function VotingResults({ players, currentVotes, phase, lastCryosleptPlayerId, gnosiaStillOnboard, onComplete }) {
+export default function VotingResults({ players, currentVotes, phase, lastCryosleptPlayerId, gnosiaStillOnboard }) {
   // currentVotes: { voterId: targetId }
   const selectedPlayer = players.find(p => p.id === lastCryosleptPlayerId);
   const isExecution = phase === 'CRYOSLEEP' && selectedPlayer;

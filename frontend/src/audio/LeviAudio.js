@@ -136,6 +136,15 @@ class LeviAudioEngine {
 
   mute()   { this.enabled = false; }
   unmute() { this.enabled = true;  }
+
+  /** Resume all cached audio elements (call on user gesture for autoplay policy) */
+  resumeAll() {
+    this.cache.forEach((audio) => {
+      if (audio.paused && audio.src) {
+        audio.play().catch(() => {});
+      }
+    });
+  }
 }
 
 const engine = new LeviAudioEngine();
@@ -145,6 +154,7 @@ const engine = new LeviAudioEngine();
 export const LeviAudio = {
 
   engine,
+  resumeAll: () => engine.resumeAll(),
 
   /** Backward compatibility for UseGame phase mapping */
   play(phase) {

@@ -1,12 +1,6 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-const NAME_MAP = {
-    "Setsu": "セツ", "Jina": "ジナ", "SQ": "SQ", "Raqio": "ラキオ", "Stella": "ステラ",
-    "Shigemichi": "シゲミチ", "Chipie": "チピエ", "Comet": "コメット", "Jonas": "ジョナス",
-    "Kukurushka": "クルーシュカ", "Otome": "オトメ", "Sha-ming": "シャーミン", "Remnan": "レムナン",
-    "Yuriko": "ユリコ", "Yuri": "ユーリ"
-};
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { NAME_MAP } from '../constants';
 
 export default function ActionPanel({ phase, role, players, lastCryoId, onAction, actionResult, privateInfo, myId }) {
     const [actionDone, setActionDone] = useState(false);
@@ -1025,84 +1019,4 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
     }
 
     return null;
-}
-
-// Generic fallback panel for Doctor / Guardian Angel / Gnosia
-function GenericActionPanel({ title, description, targets, actionLabel, themeColor, actionDone, actionResult, onTarget }) {
-    return (
-        <div style={{
-            position: 'fixed', inset: 0, zIndex: 6000,
-            background: 'rgba(0, 5, 15, 0.96)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: "'Share Tech Mono', monospace",
-            backdropFilter: 'blur(10px)',
-        }}>
-            <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                style={{
-                    background: 'rgba(0, 10, 25, 0.9)',
-                    border: `1px solid ${themeColor}44`,
-                    padding: 40, width: '90%', maxWidth: 1000,
-                    boxShadow: `0 0 50px ${themeColor}22`,
-                }}
-            >
-                <div style={{ fontFamily: 'Orbitron', color: themeColor, fontSize: 22, letterSpacing: 6, marginBottom: 10, textAlign: 'center' }}>
-                    {title}
-                </div>
-                <div style={{ color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: 30, letterSpacing: 2, fontSize: 12 }}>
-                    {description}
-                </div>
-
-                {!actionDone ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14 }}>
-                        {targets.length === 0 && (
-                            <div style={{ color: '#fff', textAlign: 'center', gridColumn: '1 / -1' }}>NO VALID TARGETS.</div>
-                        )}
-                        {targets.map(p => (
-                            <div
-                                key={p.id}
-                                onClick={() => onTarget(p)}
-                                style={{
-                                    background: '#010b1f',
-                                    border: `1px solid ${themeColor}33`,
-                                    cursor: 'pointer', overflow: 'hidden',
-                                    transition: 'all 0.2s',
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = themeColor; e.currentTarget.style.boxShadow = `0 0 15px ${themeColor}44`; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = `${themeColor}33`; e.currentTarget.style.boxShadow = 'none'; }}
-                            >
-                                <img src={p.avatar} alt={p.name} style={{ width: '100%', height: 110, objectFit: 'cover', objectPosition: 'top', filter: 'grayscale(0.5)' }} />
-                                <div style={{ padding: 8, textAlign: 'center' }}>
-                                    <div style={{ fontFamily: 'Noto Sans JP', fontWeight: 900, color: '#fff', fontSize: 16 }}>{NAME_MAP[p.name] || p.name}</div>
-                                    <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: themeColor, letterSpacing: 2 }}>{actionLabel}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        style={{
-                            marginTop: 20, padding: 24,
-                            border: `1px dashed ${themeColor}`,
-                            background: `${themeColor}11`,
-                            textAlign: 'center',
-                            color: themeColor,
-                            fontFamily: 'Orbitron',
-                            fontSize: 16, letterSpacing: 4,
-                        }}
-                    >
-                        {actionResult
-                            ? (actionResult === 'GNOSIA'
-                                ? <span style={{ color: '#ff0040' }}>⚠ GNOSIA SIGNATURE DETECTED</span>
-                                : <span style={{ color: '#4ade80' }}>✓ HUMAN CONFIRMED</span>)
-                            : <span>ACTION LOGGED INTO SYSTEM.</span>
-                        }
-                    </motion.div>
-                )}
-            </motion.div>
-        </div>
-    );
 }

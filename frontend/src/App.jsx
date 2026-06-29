@@ -4,13 +4,14 @@ import SockJS from 'sockjs-client';
 import './App.css';
 import { useGame } from './hooks/useGame';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Zap, BarChart2 } from 'lucide-react';
+import { Brain } from 'lucide-react';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import VoiceCommsOverlay from './components/MeetingRoom';
 import LandingPage from './components/LandingPage';
 import CreateRoom from './components/CreateRoom';
 import VotingResults from './components/VotingResults';
 import ActionPanel from './components/ActionPanel';
+import { NAME_MAP } from './constants';
 
 const App = () => {
     const [isJoined, setIsJoined] = useState(false);
@@ -22,7 +23,7 @@ const App = () => {
     const [joinPin, setJoinPin] = useState(''); // Keep variable just to not break destructuring if any, or remove
     const [lobbyMode, setLobbyMode] = useState('MAIN'); // MAIN, JOIN, CREATE
 
-    const [pendingAction, setPendingAction] = useState(null); // { type: 'JOIN'|'CREATE', code, participants, pin }
+    const [pendingAction, setPendingAction] = useState(null);
     
     const {
         room,
@@ -53,14 +54,21 @@ const App = () => {
     useEffect(() => {
         if (stompReady && pendingAction) {
             if (pendingAction.type === 'JOIN') {
-                subscribeToState(pendingAction.code, null, pendingAction.pin);
+                // Subscribe happens in onConnect auto-subscribe — skip duplicate
             } else if (pendingAction.type === 'CREATE') {
                 createRoom(pendingAction.code, pendingAction.participants, "");
+                setIsJoined(true);
             }
-            setIsJoined(true);
             setPendingAction(null);
         }
     }, [stompReady, pendingAction, subscribeToState, createRoom]);
+
+    // Show game screen once room data arrives (for joiners)
+    useEffect(() => {
+        if (room && !isJoined) {
+            setIsJoined(true);
+        }
+    }, [room, isJoined]);
 
     const handleJoin = (e) => {
         if (e) e.preventDefault();
@@ -103,16 +111,22 @@ const App = () => {
 
     // Auto-enter meeting during DISCUSSION phase
     useEffect(() => {
-        const enterMeeting = async () => {
-            if (room?.gameState?.phase === 'DISCUSSION' && !inMeeting) {
-                await connectToMedia(); // wait for mic — streamReady flag will fire peer creation
-                setLocalMuted(true);   // start every meeting muted — player must opt-in to speak
-                setInMeeting(true);
-            } else if (room?.gameState?.phase !== 'DISCUSSION' && inMeeting) {
-                setInMeeting(false);
+        let cancelled = false;
+        (async () => {
+            try {
+                if (room?.gameState?.phase === 'DISCUSSION' && !inMeeting) {
+                    await connectToMedia();
+                    if (cancelled) return;
+                    setLocalMuted(true);
+                    setInMeeting(true);
+                } else if (room?.gameState?.phase !== 'DISCUSSION' && inMeeting) {
+                    setInMeeting(false);
+                }
+            } catch (err) {
+                console.error('[Gnosia] Meeting setup failed:', err);
             }
-        };
-        enterMeeting();
+        })();
+        return () => { cancelled = true; };
     }, [room?.gameState?.phase]);
 
     if (!isJoined) {
@@ -181,13 +195,6 @@ const App = () => {
     const isWarp = currentPhase === 'WARP';
     const isGnosia = privateInfo?.role === 'GNOSIA';
     const isDead = room.players.find(p => p.id === playerId)?.alive === false;
-
-    const NAME_MAP = {
-        "Setsu": "セツ", "Jina": "ジナ", "SQ": "SQ", "Raqio": "ラキオ", "Stella": "ステラ",
-        "Shigemichi": "シゲミチ", "Chipie": "チピエ", "Comet": "コメット", "Jonas": "ジョナス",
-        "Kukurushka": "クルーシュカ", "Otome": "オトメ", "Sha-ming": "シャーミン", "Remnan": "レムナン",
-        "Yuriko": "ユリコ", "Yuri": "ユーリ"
-    };
 
     const isGameOver = currentPhase === 'GAME_OVER';
     const isGnosiaWin = room.gameState.winner === 'GNOSIA';

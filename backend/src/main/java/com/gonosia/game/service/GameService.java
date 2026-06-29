@@ -206,8 +206,6 @@ public class GameService {
                     state.clearGnosiaVotes(); // reset for next WARP round
                 }
 
-                messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
-                    Map.of("type", "LEVI_ANNOUNCEMENT", "audio", "notification.mp3"));
                 break;
             }
 

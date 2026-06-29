@@ -58,7 +58,11 @@ public class GameController {
     @MessageMapping("/room/{roomCode}/join")
     public void joinRoom(@DestinationVariable("roomCode") String roomCode, @Payload RoomJoinRequest joinRequest, SimpMessageHeaderAccessor headerAccessor) {
         Room room = roomManager.getRoom(roomCode);
-        if (room == null) return;
+        if (room == null) {
+            messagingTemplate.convertAndSend("/topic/user/" + joinRequest.getId() + "/private", 
+                Map.of("type", "JOIN_ERROR", "message", "Vessel not found — check your code"));
+            return;
+        }
         
         String sessionId = headerAccessor.getSessionId();
         Player existing = room.getPlayer(joinRequest.getId());
@@ -144,15 +148,23 @@ public class GameController {
     @MessageMapping("/room/{roomCode}/doctorCheck")
     public void doctorCheck(@DestinationVariable("roomCode") String roomCode, @Payload Map<String, String> payload) {
         Room room = roomManager.getRoom(roomCode);
+        log.info("[DOCTOR] Payload received for room {}: {}", roomCode, payload);
         if (room != null && (room.getGameState().getPhase() == Phase.WARP || room.getGameState().getPhase() == Phase.ROLE_ACTIONS)) {
             Player doctor = room.getPlayer(payload.get("doctorId"));
-            String targetId = payload.get("targetId"); // Now manual selection
+            String targetId = payload.get("targetId");
             Player target = room.getPlayer(targetId);
+            log.info("[DOCTOR] Doctor={}, Target={}, TargetCryoslept={}", 
+                (doctor != null ? doctor.getName() : "null"), 
+                (target != null ? target.getName() : "null"),
+                (target != null ? target.isCryoslept() : "N/A"));
             if (doctor != null && doctor.isAlive() && doctor.getRole() == Role.DOCTOR && target != null && target.isCryoslept()) {
                 String result = target.getRole() == Role.GNOSIA ? "GNOSIA" : "HUMAN";
                 messagingTemplate.convertAndSend("/topic/user/" + doctor.getId() + "/private", 
                     Map.of("type", "DOCTOR_CHECK_RESULT", "targetId", target.getId(), "result", result));
+                log.info("[DOCTOR] Result sent to {}: {}", doctor.getName(), result);
             }
+        } else {
+            log.warn("[DOCTOR] Invalid phase or room null. Room: {}, Phase: {}", roomCode, room != null ? room.getGameState().getPhase() : "null");
         }
     }
 
@@ -187,7 +199,7 @@ public class GameController {
         state.getGnosiaVotes().put(gnosia.getId(), targetId);
         log.info("[WARP] {} voted to kill: {}", gnosia.getName(), target.getName());
 
-        // Check for full consensus among all alive Gnosia
+        // Check for majority consensus among alive Gnosia
         List<Player> aliveGnosia = room.getPlayers().stream()
                 .filter(p -> p.isAlive() && p.getRole() == Role.GNOSIA)
                 .collect(java.util.stream.Collectors.toList());
@@ -196,13 +208,14 @@ public class GameController {
                 .filter(g -> targetId.equals(state.getGnosiaVotes().get(g.getId())))
                 .count();
 
-        if (agreeCount == aliveGnosia.size() && !aliveGnosia.isEmpty()) {
+        // Majority: >50% of alive Gnosia must agree (1/1, 2/2, 2/3, 3/4, etc.)
+        if (agreeCount * 2 > aliveGnosia.size()) {
             state.setGnosiaTargetPlayerId(targetId);
-            log.info("[WARP] CONSENSUS reached. All {} Gnosia selected: {}", aliveGnosia.size(), target.getName());
+            log.info("[WARP] CONSENSUS reached. {}/{} Gnosia selected: {}", agreeCount, aliveGnosia.size(), target.getName());
             messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
                 Map.of("type", "GNOSIA_CONSENSUS", "targetId", targetId, "targetName", target.getName()));
         } else {
-            log.info("[WARP] {}/{} Gnosia voted for {}.", agreeCount, aliveGnosia.size(), target.getName());
+            log.info("[WARP] {}/{} Gnosia voted for {}. Consensus not yet reached.", agreeCount, aliveGnosia.size(), target.getName());
         }
 
         gameService.broadcastState(room);

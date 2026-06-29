@@ -41,6 +41,10 @@ export const useGame = (initialRoomCode) => {
   // ─── WebSocket Connection ────────────────────────────────────────────────────
 
   const connect = () => {
+    // Deactivate any existing connection to avoid zombie STOMP clients
+    if (stompClient.current?.active) {
+      stompClient.current.deactivate();
+    }
     setStompReady(false); // Reset readiness for the new connection attempt
     const client = new Client({
       webSocketFactory: () => new SockJS(SOCKET_URL),
@@ -77,7 +81,7 @@ export const useGame = (initialRoomCode) => {
             break;
           case 'JOIN_ERROR':
             setJoinError(info.message);
-            // Don't setRoom if errored!
+            localStorage.removeItem('gnosia_room_code');
             break;
           case 'WARP_CHAT':
             setMessages(prev => [...prev, info.message]);
@@ -154,6 +158,7 @@ export const useGame = (initialRoomCode) => {
     });
 
     localStorage.setItem('gnosia_room_code', code);
+    roomCodeRef.current = code;
 
     // Join with ID and optional PIN
     client.publish({
@@ -177,6 +182,10 @@ export const useGame = (initialRoomCode) => {
 
   const connectToMedia = async () => {
     try {
+      // Stop any previous stream to avoid orphaned tracks
+      if (userStream.current) {
+        userStream.current.getTracks().forEach(t => t.stop());
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
       userStream.current = stream;
       setStreams(prev => ({ ...prev, local: stream }));
@@ -199,9 +208,8 @@ export const useGame = (initialRoomCode) => {
       stream: userStream.current,
       config: {
         iceServers: [
-          {
-            urls: "stun:stun.relay.metered.ca:80",
-          },
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun.relay.metered.ca:80" },
           {
             urls: "turn:global.relay.metered.ca:80",
             username: "23d01fd94ab5d91f5c051a62",
@@ -262,10 +270,20 @@ export const useGame = (initialRoomCode) => {
   };
 
   useEffect(() => {
-    // Guard: only run once the mic stream is confirmed AND we have players
-    if (!streamReady || !room?.players || !playerId) return;
+    // Guard: STOMP must be ready so signaling subscription is active
+    if (!streamReady || !stompReady || !room?.players || !playerId) return;
 
     console.log(`[Gnosia] WebRTC peer sweep — streamReady=true, players=${room.players.length}, tracks=${userStream.current?.getTracks().length ?? 0}`);
+
+    // Destroy peers for players no longer in the room
+    const activeIds = new Set(room.players.map(p => p.id));
+    Object.keys(peers.current).forEach(id => {
+      if (id !== playerId && !activeIds.has(id)) {
+        console.log(`[Gnosia] Cleaning up peer for disconnected player: ${id}`);
+        peers.current[id].destroy();
+        delete peers.current[id];
+      }
+    });
 
     room.players.forEach(p => {
       if (p.id === playerId || peers.current[p.id]) return;
@@ -274,7 +292,7 @@ export const useGame = (initialRoomCode) => {
       console.log(`[Gnosia] WebRTC: ${shouldInitiate ? 'Initiating' : 'Awaiting'} connection with ${p.name} (${p.id})`);
       createPeer(p.id, shouldInitiate);
     });
-  }, [streamReady, room?.players?.length, playerId]);
+  }, [streamReady, stompReady, room?.players?.length, playerId]);
 
   // Handle phase-based music transitions
   useEffect(() => {
