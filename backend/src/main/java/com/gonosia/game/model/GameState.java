@@ -17,6 +17,7 @@ public class GameState {
     private Map<String, List<String>> behavioralInsights = new HashMap<>(); // e.g., "Frequent Partners" -> List of IDs
     private Map<String, String> gnosiaVotes = new HashMap<>(); // GnosiaID -> TargetID (WARP phase consensus)
     private Map<String, String> votingResults = new HashMap<>(); // VoterID -> TargetID (revealed results)
+    private Map<String, String> playerActionDone = new HashMap<>(); // playerId -> actionType (reconnect recovery)
     private Role winner; // To store the game winner (HUMAN or GNOSIA)
     private boolean gnosiaStillOnboard;
 
@@ -82,6 +83,10 @@ public class GameState {
 
     public Map<String, String> getVotingResults() { return votingResults; }
     public void setVotingResults(Map<String, String> votingResults) { this.votingResults = votingResults; }
+
+    public Map<String, String> getPlayerActionDone() { return playerActionDone; }
+    public void setPlayerActionDone(Map<String, String> playerActionDone) { this.playerActionDone = playerActionDone; }
+    public void clearPlayerActionDone() { this.playerActionDone = new HashMap<>(); }
     
     public Role getWinner() { return winner; }
     public void setWinner(Role winner) { this.winner = winner; }

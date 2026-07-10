@@ -1,10 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { NAME_MAP } from '../constants';
 
 export default function ActionPanel({ phase, role, players, lastCryoId, onAction, actionResult, privateInfo, myId }) {
-    const [actionDone, setActionDone] = useState(false);
+    const [actionDone, setActionDone] = useState(() => {
+        return sessionStorage.getItem('gnosia_action_done') === 'true';
+    });
     const [selected, setSelected] = useState(null);
+
+    // Reconnect recovery: restore action state from server
+    useEffect(() => {
+        if (privateInfo?.actionDone) {
+            setActionDone(true);
+        }
+    }, [privateInfo?.actionDone]);
+
+    // Persist actionDone to sessionStorage for extra resilience
+    useEffect(() => {
+        sessionStorage.setItem('gnosia_action_done', actionDone);
+    }, [actionDone]);
+
+    useEffect(() => {
+        setActionDone(false);
+        setSelected(null);
+        sessionStorage.removeItem('gnosia_action_done');
+    }, [phase]);
 
     if (phase !== 'ROLE_ACTIONS' && phase !== 'WARP') return null;
 

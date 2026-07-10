@@ -67,6 +67,7 @@ public class GameService {
                 state.setPhase(Phase.VOTING);
                 state.setRemainingTimeSeconds(room.getConfig().getVotingTimeSeconds());
                 state.clearVotes();
+                state.clearPlayerActionDone();
                 
                 // --- Levi: Start Voting ---
                 messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
@@ -129,6 +130,7 @@ public class GameService {
                     state.setPhase(Phase.WARP);
                     state.clearVotes(); 
                     state.getVotingResults().clear();
+                    state.clearPlayerActionDone();
                     state.setRemainingTimeSeconds(room.getConfig().getWarpTimeSeconds());
 
                     // --- Levi: Warp Sequence ---
@@ -203,7 +205,8 @@ public class GameService {
                     // Reset per-round transient IDs
                     state.setProtectedPlayerId(null);
                     state.setGnosiaTargetPlayerId(null);
-                    state.clearGnosiaVotes(); // reset for next WARP round
+                    state.clearGnosiaVotes();
+                    state.clearPlayerActionDone();
                 }
 
                 break;
@@ -264,6 +267,7 @@ public class GameService {
             Map<String, Object> privateInfo = new HashMap<>();
             privateInfo.put("type", "PRIVATE_INFO");
             privateInfo.put("role", player.getRole());
+            privateInfo.put("actionDone", room.getGameState().getPlayerActionDone().get(player.getId()));
             if (player.getRole() == Role.GNOSIA) {
                 privateInfo.put("partners", gnosiaIds);
             }

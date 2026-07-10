@@ -121,6 +121,7 @@ public class GameController {
             Player voter = room.getPlayer(voterId);
             if (voter != null && voter.isAlive()) {
                 room.getGameState().getCurrentVotes().put(voterId, payload.get("targetId"));
+                room.getGameState().getPlayerActionDone().put(voterId, "VOTED");
                 gameService.broadcastState(room);
             }
         }
@@ -138,6 +139,7 @@ public class GameController {
                 String result = target.getRole() == Role.GNOSIA ? "GNOSIA" : "HUMAN";
                 messagingTemplate.convertAndSend("/topic/user/" + scanner.getId() + "/private", 
                     Map.of("type", "SCAN_RESULT", "targetId", target.getId(), "result", result));
+                room.getGameState().getPlayerActionDone().put(scanner.getId(), "SCANNED");
                 log.info("[SCAN] Result sent to {}: {}", scanner.getName(), result);
             }
         } else {
@@ -161,6 +163,7 @@ public class GameController {
                 String result = target.getRole() == Role.GNOSIA ? "GNOSIA" : "HUMAN";
                 messagingTemplate.convertAndSend("/topic/user/" + doctor.getId() + "/private", 
                     Map.of("type", "DOCTOR_CHECK_RESULT", "targetId", target.getId(), "result", result));
+                room.getGameState().getPlayerActionDone().put(doctor.getId(), "DOCTOR_CHECKED");
                 log.info("[DOCTOR] Result sent to {}: {}", doctor.getName(), result);
             }
         } else {
@@ -175,6 +178,7 @@ public class GameController {
             Player ga = room.getPlayer(payload.get("gaId"));
             if (ga != null && ga.isAlive() && ga.getRole() == Role.GUARDIAN_ANGEL) {
                 room.getGameState().setProtectedPlayerId(payload.get("targetId"));
+                room.getGameState().getPlayerActionDone().put(ga.getId(), "PROTECTED");
             }
         }
     }
@@ -197,6 +201,7 @@ public class GameController {
 
         GameState state = room.getGameState();
         state.getGnosiaVotes().put(gnosia.getId(), targetId);
+        state.getPlayerActionDone().put(gnosia.getId(), "KILL_VOTE_CAST");
         log.info("[WARP] {} voted to kill: {}", gnosia.getName(), target.getName());
 
         // Check for majority consensus among alive Gnosia

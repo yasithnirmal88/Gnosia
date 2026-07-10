@@ -100,6 +100,14 @@ export default function MeetingRoom({
     }
   }, [currentPhase]);
 
+  // Reconnect recovery: restore voteLocked + selectedForVote from server state
+  useEffect(() => {
+    if (currentPhase === 'VOTING' && room?.gameState?.currentVotes?.[playerId]) {
+      setVoteLocked(true);
+      setSelectedForVote(room.gameState.currentVotes[playerId]);
+    }
+  }, [currentPhase, room?.gameState?.currentVotes, playerId]);
+
   const votes = room?.gameState?.currentVotes || {};
   const votingResults = room?.gameState?.votingResults || {};
   const hasGnosia = room?.gameState?.gnosiaStillOnboard === true;
