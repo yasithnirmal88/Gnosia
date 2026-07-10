@@ -61,11 +61,14 @@ function createPlayer(index) {
                 setTimeout(() => {
                     for (let i = 0; i < 5; i++) {
                         if (i === index) continue;
-                        const pId = playerIds[PLAYER_NAMES[i]];
-                        if (pId) client.publish({
-                            destination: `/app/room/${info.roomCode}/join`,
-                            body: JSON.stringify({ id: pId, pin: '' }),
-                        });
+                        const pName = PLAYER_NAMES[i];
+                        const pData = players[pName];
+                        if (pData && pData.client) {
+                            pData.client.publish({
+                                destination: `/app/room/${info.roomCode}/join`,
+                                body: JSON.stringify({ id: pData.id, pin: '' }),
+                            });
+                        }
                     }
                 }, 500);
             }

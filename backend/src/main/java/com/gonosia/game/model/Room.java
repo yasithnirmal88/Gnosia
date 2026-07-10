@@ -2,30 +2,31 @@ package com.gonosia.game.model;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.Map;
 
 public class Room {
     private String roomCode;
-    private List<Player> players = new ArrayList<>();
+    private List<Player> players = new CopyOnWriteArrayList<>();
     private GameState gameState;
     private GameConfig config = new GameConfig();
     private GameAnalytics analytics;
     private String pin;
-    private List<Map<String, String>> votingHistory = new ArrayList<>();
+    private List<Map<String, String>> votingHistory = new CopyOnWriteArrayList<>();
     private Map<String, String> sessionIdToPlayerId = new java.util.concurrent.ConcurrentHashMap<>();
     private int meetingRound = 0; // Tracks which discussion meeting we are in (1-indexed)
     
     public Room() {}
 
     public void initialize() {
-        if (players == null) players = new ArrayList<>();
+        if (players == null) players = new CopyOnWriteArrayList<>();
         if (config == null) config = new GameConfig();
-        if (votingHistory == null) votingHistory = new ArrayList<>();
+        if (votingHistory == null) votingHistory = new CopyOnWriteArrayList<>();
         if (sessionIdToPlayerId == null) sessionIdToPlayerId = new java.util.concurrent.ConcurrentHashMap<>();
     }
 
     public void addPlayer(Player player) {
-        if (players == null) players = new ArrayList<>();
+        if (players == null) players = new CopyOnWriteArrayList<>();
         if (config == null) config = new GameConfig();
         if (players.size() < config.getMaxPlayers()) {
             players.add(player);
