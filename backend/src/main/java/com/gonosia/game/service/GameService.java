@@ -146,20 +146,61 @@ public class GameService {
             case WARP: {
                 String targetToKill = state.getGnosiaTargetPlayerId();
                 String protectedOne = state.getProtectedPlayerId();
+                Map<String, String> gnosiaVotes = state.getGnosiaVotes();
 
-                // --- Fallback: if Gonosia never submitted a target, auto-pick a random alive
-                // human ---
-                if (targetToKill == null || room.getPlayer(targetToKill) == null
+                // Log all Gnosia votes for debugging
+                if (gnosiaVotes != null && !gnosiaVotes.isEmpty()) {
+                    StringBuilder voteDetail = new StringBuilder("[WARP] Gnosia votes this round: ");
+                    gnosiaVotes.forEach((gid, tid) -> {
+                        Player gp = room.getPlayer(gid);
+                        Player tp = room.getPlayer(tid);
+                        voteDetail.append((gp != null ? gp.getName() : gid))
+                                  .append("->")
+                                  .append((tp != null ? tp.getName() : tid))
+                                  .append(" ");
+                    });
+                    log.info(voteDetail.toString());
+                } else {
+                    log.info("[WARP] No Gnosia votes submitted this round.");
+                }
+
+                // Resolve kill target: consensus → most-voted → random fallback
+                if (targetToKill == null || targetToKill.isEmpty()
+                        || room.getPlayer(targetToKill) == null
                         || !room.getPlayer(targetToKill).isAlive()) {
-                    List<Player> eligibleVictims = room.getPlayers().stream()
-                            .filter(p -> p.isAlive() && p.getRole() != Role.GNOSIA)
-                            .collect(java.util.stream.Collectors.toList());
-                    if (!eligibleVictims.isEmpty()) {
-                        Collections.shuffle(eligibleVictims);
-                        targetToKill = eligibleVictims.get(0).getId();
-                        log.info("[WARP] Gnosia did not submit a target. Auto-selected victim: {}",
-                                eligibleVictims.get(0).getName());
+
+                    if (gnosiaVotes != null && !gnosiaVotes.isEmpty()) {
+                        // Votes exist but no majority → pick the most-voted target
+                        Map<String, Long> counts = gnosiaVotes.values().stream()
+                                .collect(java.util.stream.Collectors.groupingBy(
+                                        t -> t, java.util.stream.Collectors.counting()));
+                        long maxVotes = counts.values().stream()
+                                .mapToLong(Long::longValue).max().orElse(0);
+                        List<String> topTargets = counts.entrySet().stream()
+                                .filter(e -> e.getValue() == maxVotes)
+                                .map(Map.Entry::getKey)
+                                .collect(java.util.stream.Collectors.toList());
+                        Collections.shuffle(topTargets);
+                        targetToKill = topTargets.get(0);
+                        Player resolved = room.getPlayer(targetToKill);
+                        log.info("[WARP] No majority consensus (votes exist). Most-voted target: {} ({} votes, {} Gnosia voted)",
+                                resolved != null ? resolved.getName() : targetToKill,
+                                maxVotes, gnosiaVotes.size());
+                    } else {
+                        // No votes at all → random eligible human
+                        List<Player> eligibleVictims = room.getPlayers().stream()
+                                .filter(p -> p.isAlive() && p.getRole() != Role.GNOSIA)
+                                .collect(java.util.stream.Collectors.toList());
+                        if (!eligibleVictims.isEmpty()) {
+                            Collections.shuffle(eligibleVictims);
+                            targetToKill = eligibleVictims.get(0).getId();
+                            log.info("[WARP] Zero Gnosia votes submitted. Random fallback victim: {}",
+                                    eligibleVictims.get(0).getName());
+                        }
                     }
+                } else {
+                    log.info("[WARP] Using majority-consensus target: {}",
+                            room.getPlayer(targetToKill).getName());
                 }
 
                 if (targetToKill != null) {

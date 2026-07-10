@@ -204,6 +204,19 @@ public class GameController {
         state.getPlayerActionDone().put(gnosia.getId(), "KILL_VOTE_CAST");
         log.info("[WARP] {} voted to kill: {}", gnosia.getName(), target.getName());
 
+        // Log all current Gnosia votes
+        Map<String, String> allVotes = state.getGnosiaVotes();
+        StringBuilder voteDetail = new StringBuilder("[WARP] All Gnosia votes: ");
+        allVotes.forEach((gid, tid) -> {
+            Player gp = room.getPlayer(gid);
+            Player tp = room.getPlayer(tid);
+            voteDetail.append((gp != null ? gp.getName() : gid))
+                      .append("->")
+                      .append((tp != null ? tp.getName() : tid))
+                      .append(" ");
+        });
+        log.info(voteDetail.toString());
+
         // Check for majority consensus among alive Gnosia
         List<Player> aliveGnosia = room.getPlayers().stream()
                 .filter(p -> p.isAlive() && p.getRole() == Role.GNOSIA)
@@ -220,7 +233,9 @@ public class GameController {
             messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/events",
                 Map.of("type", "GNOSIA_CONSENSUS", "targetId", targetId, "targetName", target.getName()));
         } else {
-            log.info("[WARP] {}/{} Gnosia voted for {}. Consensus not yet reached.", agreeCount, aliveGnosia.size(), target.getName());
+            log.info("[WARP] {}/{} Gnosia voted for {}. Consensus threshold {}/{} not met.", 
+                     agreeCount, aliveGnosia.size(), target.getName(), 
+                     aliveGnosia.size() / 2 + 1, aliveGnosia.size());
         }
 
         gameService.broadcastState(room);
