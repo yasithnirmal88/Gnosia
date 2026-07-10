@@ -28,7 +28,8 @@ import { NAME_MAP } from '../constants';
 export default function MeetingRoom({ 
   players=[], streams={}, currentPhase, role, privateInfo, playerId, 
   localMuted, setLocalMuted, globalVolume, setGlobalVolume, onVote, onKill, 
-  playerName, room, messages=[], dmMessages={}, sendMessage, onDm 
+  playerName, room, messages=[], dmMessages={}, sendMessage, onDm,
+  gnosiaChatMessages=[], sendGnosiaChat
 }) {
   const [voteLocked, setVoteLocked] = useState(false);
   const [selectedForVote, setSelectedForVote] = useState(null);
@@ -37,6 +38,7 @@ export default function MeetingRoom({
   const [dmOpen, setDmOpen] = useState(false);
   const [dmHistory, setDmHistory] = useState({});
   const [dmInput, setDmInput] = useState("");
+  const [gnosiaChatInput, setGnosiaChatInput] = useState("");
   const [publicChatInput, setPublicChatInput] = useState("");
   const [warpCouncilTarget, setWarpCouncilTarget] = useState(null); // Gnosia's chosen victim
   const dmRef = useRef(null);
@@ -1186,6 +1188,69 @@ export default function MeetingRoom({
                 style={{ background: 'rgba(0,255,245,0.2)', color: '#00fff5', border: 'none', borderLeft: '1px solid rgba(0,255,245,0.4)', padding: '0 15px', fontFamily: 'Orbitron', fontWeight: 900, cursor: 'pointer' }}
             >SEND</button>
         </div>
+      )}
+
+      {/* GNOSIA-ONLY CHAT — visible to alive Gnosia only */}
+      {role === 'GNOSIA' && !amIDead && (
+        <>
+          {/* GNOSIA CHAT MESSAGE LOG */}
+          <div style={{
+              position: 'fixed', bottom: '100px', right: '25px', zIndex: 100, width: '280px',
+              maxHeight: '180px', pointerEvents: 'none', display: 'flex', flexDirection: 'column-reverse',
+              gap: '8px', overflow: 'hidden'
+          }}>
+              <AnimatePresence>
+                {gnosiaChatMessages.slice(-6).map((m, i) => (
+                    <motion.div 
+                        key={m.id || i} 
+                        initial={{ opacity: 0, x: 20 }} 
+                        animate={{ opacity: 1, x: 0 }}
+                        style={{
+                            background: 'rgba(30, 0, 10, 0.65)', borderRight: '3px solid #ff0040',
+                            padding: '6px 12px', fontSize: '11px', color: 'rgba(255,255,255,0.8)',
+                            fontFamily: "'Share Tech Mono', monospace", backdropFilter: 'blur(2px)',
+                            textAlign: 'right'
+                        }}
+                    >
+                        {m.content}
+                        <span style={{ color: '#ff0040', fontWeight: 900, marginLeft: '8px' }}>
+                            :{m.senderName.toUpperCase()}
+                        </span>
+                    </motion.div>
+                ))}
+              </AnimatePresence>
+          </div>
+
+          {/* GNOSIA CHAT INPUT */}
+          <div style={{
+              position: 'fixed', bottom: '65px', right: '25px', zIndex: 100, width: '280px',
+              display: 'flex', border: '1px solid rgba(255, 0, 64, 0.4)', background: 'rgba(25,0,5,0.85)'
+          }}>
+              <input
+                  type="text"
+                  value={gnosiaChatInput}
+                  onChange={(e) => setGnosiaChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                      if (e.key === 'Enter' && gnosiaChatInput.trim().length > 0) {
+                          sendGnosiaChat && sendGnosiaChat(gnosiaChatInput.trim());
+                          setGnosiaChatInput("");
+                      }
+                  }}
+                  placeholder="GNOSIA ENCRYPTED..."
+                  style={{ flex: 1, background: 'transparent', border: 'none', color: '#ff0040', padding: '10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '12px', outline: 'none' }}
+              />
+              <button 
+                  onClick={() => { 
+                      if (gnosiaChatInput.trim().length > 0) {
+                         sendGnosiaChat && sendGnosiaChat(gnosiaChatInput.trim());
+                         setGnosiaChatInput(""); 
+                      }
+                  }} 
+                  disabled={gnosiaChatInput.trim().length === 0}
+                  style={{ background: 'rgba(255,0,64,0.2)', color: '#ff0040', border: 'none', borderLeft: '1px solid rgba(255,0,64,0.4)', padding: '0 15px', fontFamily: 'Orbitron', fontWeight: 900, cursor: 'pointer' }}
+              >SEND</button>
+          </div>
+        </>
       )}
 
     </div>

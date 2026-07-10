@@ -49,6 +49,8 @@ const App = () => {
         stompReady,
         dmMessages,
         sendDm,
+        gnosiaChatMessages,
+        sendGnosiaChat,
     } = useGame(roomCodeInput);
 
     useEffect(() => {
@@ -269,6 +271,8 @@ const App = () => {
                                 dmMessages={dmMessages}
                                 sendMessage={sendMessage}
                                 onDm={sendDm}
+                                gnosiaChatMessages={gnosiaChatMessages}
+                                sendGnosiaChat={sendGnosiaChat}
                             />
                         )}
                     </AnimatePresence>

@@ -15,6 +15,7 @@ export const useGame = (initialRoomCode) => {
   const [scanResult, setScanResult] = useState(null);
   const [doctorResult, setDoctorResult] = useState(null);
   const [joinError, setJoinError] = useState(null);
+  const [gnosiaChatMessages, setGnosiaChatMessages] = useState([]);
   const [stompReady, setStompReady] = useState(false);
   const [streamReady, setStreamReady] = useState(false);
   const [playerId] = useState(() => {
@@ -83,8 +84,8 @@ export const useGame = (initialRoomCode) => {
             setJoinError(info.message);
             localStorage.removeItem('gnosia_room_code');
             break;
-          case 'WARP_CHAT':
-            setMessages(prev => [...prev, info.message]);
+          case 'GNOSIA_CHAT':
+            setGnosiaChatMessages(prev => [...prev, info.message]);
             break;
           case 'DM':
             setDmMessages(prev => {
@@ -332,6 +333,7 @@ export const useGame = (initialRoomCode) => {
   const protect    = (targetId) => publish('protect',     { gaId: playerId, targetId });
   const doctorCheck = (targetId) => publish('doctorCheck', { doctorId: playerId, targetId });
   const kill       = (targetId) => publish('kill',        { voterId: playerId, targetId });
+  const sendGnosiaChat = (content) => publish('gnosia-chat', { senderId: playerId, content });
   const sendDm = (targetId, content) => {
     if (stompClient.current?.connected && stompReady) {
       stompClient.current.publish({
@@ -370,5 +372,7 @@ export const useGame = (initialRoomCode) => {
     stompReady,
     dmMessages,
     sendDm,
+    gnosiaChatMessages,
+    sendGnosiaChat,
   };
 };
