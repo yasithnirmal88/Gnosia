@@ -12,6 +12,10 @@
   --red-glow: 0 0 10px rgba(255, 77, 77, 0.5);
   --glass: blur(10px) saturate(150%);
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* shadcn-style variables for shader component */
+  --background: 220, 15%, 8%;
+  --foreground: 0, 0%, 100%;
 }
 
 * {
@@ -179,4 +183,16 @@ h1, h2, h3 {
   padding: 8px 12px;
   border-radius: 4px;
   outline: none;
+}
+
+.shader-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+@keyframes spiral-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
