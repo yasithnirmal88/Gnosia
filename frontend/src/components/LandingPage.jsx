@@ -191,7 +191,7 @@ export default function LandingPage({ onPlay, onCreateRoom }) {
 /* ─── Inline styles ──────────────────────────────────────── */
 const S = {
   root: {
-    minHeight: "100vh", background: "#060810",
+    minHeight: "100vh", background: "transparent",
     display: "flex", flexDirection: "column",
     alignItems: "center", justifyContent: "center",
     overflow: "hidden", position: "relative",

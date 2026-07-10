@@ -17,7 +17,7 @@ export default function CreateRoom({ onSave, onBack }) {
 
   return (
     <div style={{
-      minHeight: "100vh", background: "#000", display: "flex",
+      minHeight: "100vh", background: "transparent", display: "flex",
       flexDirection: "column", alignItems: "center", justifyContent: "center",
       fontFamily: "'Share Tech Mono', monospace", position: "relative", overflow: "hidden",
     }}>

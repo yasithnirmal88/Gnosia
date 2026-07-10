@@ -24,15 +24,6 @@ const App = () => {
     const [joinPin, setJoinPin] = useState(''); // Keep variable just to not break destructuring if any, or remove
     const [lobbyMode, setLobbyMode] = useState('MAIN'); // MAIN, JOIN, CREATE
 
-    const [showSplash, setShowSplash] = useState(true);
-
-    useEffect(() => {
-        if (isJoined) {
-            const t = setTimeout(() => setShowSplash(false), 800);
-            return () => clearTimeout(t);
-        }
-    }, [isJoined]);
-
     const [pendingAction, setPendingAction] = useState(null);
     
     const {
@@ -143,11 +134,6 @@ const App = () => {
         return () => { cancelled = true; };
     }, [room?.gameState?.phase]);
 
-    const splashStyle = {
-        position: 'fixed', inset: 0, zIndex: showSplash ? 9998 : -1,
-        opacity: showSplash ? 1 : 0, transition: 'opacity 0.8s ease-out'
-    };
-
     if (!isJoined) {
         const preGameContent = (() => {
             if (lobbyMode === 'JOIN') {
@@ -208,10 +194,13 @@ const App = () => {
 
         return (
             <>
-                <div style={splashStyle}>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>
                     <SpiralAnimation />
                 </div>
-                {preGameContent}
+                <div style={{ position: 'fixed', inset: 0, zIndex: 1, background: 'rgba(0,0,0,0.65)' }} />
+                <div style={{ position: 'relative', zIndex: 2 }}>
+                    {preGameContent}
+                </div>
             </>
         );
     }
