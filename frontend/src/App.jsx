@@ -4,6 +4,7 @@ import SockJS from 'sockjs-client';
 import './App.css';
 import { useGame } from './hooks/useGame';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SpiralAnimation } from '@/components/ui/spiral-animation';
 import { Brain } from 'lucide-react';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import VoiceCommsOverlay from './components/MeetingRoom';
@@ -22,6 +23,15 @@ const App = () => {
     const [globalVolume, setGlobalVolume] = useState(1);
     const [joinPin, setJoinPin] = useState(''); // Keep variable just to not break destructuring if any, or remove
     const [lobbyMode, setLobbyMode] = useState('MAIN'); // MAIN, JOIN, CREATE
+
+    const [showSplash, setShowSplash] = useState(true);
+
+    useEffect(() => {
+        if (isJoined) {
+            const t = setTimeout(() => setShowSplash(false), 800);
+            return () => clearTimeout(t);
+        }
+    }, [isJoined]);
 
     const [pendingAction, setPendingAction] = useState(null);
     
@@ -133,63 +143,76 @@ const App = () => {
         return () => { cancelled = true; };
     }, [room?.gameState?.phase]);
 
+    const splashStyle = {
+        position: 'fixed', inset: 0, zIndex: showSplash ? 9998 : -1,
+        opacity: showSplash ? 1 : 0, transition: 'opacity 0.8s ease-out'
+    };
+
     if (!isJoined) {
-        // Sub-screen: enter PIN to join
-        if (lobbyMode === 'JOIN') {
-            return (
-                <div className="lobby-outer">
-                    <div className="lobby-bg-pattern" />
-                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="lobby-container">
-                        <header className="lobby-header">
-                            <h1>GNOSIA</h1>
-                        </header>
-                        <main className="lobby-card glass-panel">
-                            <div className="lobby-join-form">
-                                <h3>Game PIN (6-char code)</h3>
-                                <form onSubmit={handleJoin}>
-                                    <input
-                                        type="text"
-                                        placeholder="XXXXXX"
-                                        value={roomCodeInput}
-                                        onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
-                                        className="pin-input"
-                                        maxLength={6}
-                                        required
-                                        autoFocus
-                                    />
-                                    <button type="submit" className="button-primary play-btn" style={{ marginTop: 32 }}>Enter Ship</button>
-                                    
-                                    {joinError && (
-                                        <div style={{ marginTop: 16, color: "#ff0040", fontSize: 11, fontWeight: 700, letterSpacing: 1, textAlign: "center", border: "1px dashed rgba(255,0,64,0.3)", padding: "8px" }}>
-                                            ⚠️ AUTH ERROR: {joinError.toUpperCase()}
-                                        </div>
-                                    )}
+        const preGameContent = (() => {
+            if (lobbyMode === 'JOIN') {
+                return (
+                    <div className="lobby-outer">
+                        <div className="lobby-bg-pattern" />
+                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="lobby-container">
+                            <header className="lobby-header">
+                                <h1>GNOSIA</h1>
+                            </header>
+                            <main className="lobby-card glass-panel">
+                                <div className="lobby-join-form">
+                                    <h3>Game PIN (6-char code)</h3>
+                                    <form onSubmit={handleJoin}>
+                                        <input
+                                            type="text"
+                                            placeholder="XXXXXX"
+                                            value={roomCodeInput}
+                                            onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
+                                            className="pin-input"
+                                            maxLength={6}
+                                            required
+                                            autoFocus
+                                        />
+                                        <button type="submit" className="button-primary play-btn" style={{ marginTop: 32 }}>Enter Ship</button>
+                                        
+                                        {joinError && (
+                                            <div style={{ marginTop: 16, color: "#ff0040", fontSize: 11, fontWeight: 700, letterSpacing: 1, textAlign: "center", border: "1px dashed rgba(255,0,64,0.3)", padding: "8px" }}>
+                                                ⚠️ AUTH ERROR: {joinError.toUpperCase()}
+                                            </div>
+                                        )}
 
-                                    <button type="button" className="text-btn" onClick={() => setLobbyMode('MAIN')}>← Back</button>
-                                </form>
-                            </div>
-                        </main>
-                    </motion.div>
-                </div>
-            );
-        }
+                                        <button type="button" className="text-btn" onClick={() => setLobbyMode('MAIN')}>← Back</button>
+                                    </form>
+                                </div>
+                            </main>
+                        </motion.div>
+                    </div>
+                );
+            }
 
-        // Sub-screen: Create Room customizer
-        if (lobbyMode === 'CREATE') {
+            if (lobbyMode === 'CREATE') {
+                return (
+                    <CreateRoom 
+                        onSave={handleCreateRoom}
+                        onBack={() => setLobbyMode('MAIN')}
+                    />
+                );
+            }
+
             return (
-                <CreateRoom 
-                    onSave={handleCreateRoom}
-                    onBack={() => setLobbyMode('MAIN')}
+                <LandingPage
+                    onPlay={() => setLobbyMode('JOIN')}
+                    onCreateRoom={() => setLobbyMode('CREATE')}
                 />
             );
-        }
+        })();
 
-        // Default: show the premium landing page
         return (
-            <LandingPage
-                onPlay={() => setLobbyMode('JOIN')}
-                onCreateRoom={() => setLobbyMode('CREATE')}
-            />
+            <>
+                <div style={splashStyle}>
+                    <SpiralAnimation />
+                </div>
+                {preGameContent}
+            </>
         );
     }
 
