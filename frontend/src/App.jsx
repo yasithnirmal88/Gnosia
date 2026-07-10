@@ -197,6 +197,7 @@ const App = () => {
     const isWarp = currentPhase === 'WARP';
     const isGnosia = privateInfo?.role === 'GNOSIA';
     const isDead = room.players.find(p => p.id === playerId)?.alive === false;
+    const hasVoted = currentPhase === 'VOTING' && !!room?.gameState?.currentVotes?.[playerId];
 
     const isGameOver = currentPhase === 'GAME_OVER';
     const isGnosiaWin = room.gameState.winner === 'GNOSIA';
@@ -214,8 +215,8 @@ const App = () => {
                 {['DISCUSSION', 'VOTING'].includes(currentPhase) && (
                     <>
                         <div className="diamond-bullet">♦</div>
-                        <div className={`phase-badge ${currentPhase === 'VOTING' ? 'voting' : ''}`}>
-                            {currentPhase === 'VOTING' ? 'VOTE PHASE' : 'MEETING ROOM'}
+                        <div className={`phase-badge ${currentPhase === 'VOTING' ? (hasVoted ? 'submitted' : 'voting') : ''}`}>
+                            {currentPhase === 'VOTING' ? (hasVoted ? 'VOTE SUBMITTED' : 'VOTING IN PROGRESS') : 'MEETING ROOM'}
                         </div>
                     </>
                 )}

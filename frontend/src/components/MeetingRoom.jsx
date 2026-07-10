@@ -299,6 +299,12 @@ export default function MeetingRoom({
             cursor: not-allowed;
         }
 
+        .crew-card.selected-for-vote {
+            border-color: #ff0;
+            box-shadow: 0 0 25px rgba(255, 255, 0, 0.6), 0 0 50px rgba(255, 255, 0, 0.2);
+            transform: translateY(-3px);
+        }
+
         /* Card top ID strip */
         .card-id-strip {
             position: absolute;
@@ -757,7 +763,7 @@ export default function MeetingRoom({
           return (
             <div
               key={p.id}
-              className={`crew-card ${isMe ? 'self' : ''} ${isSpeaking ? 'speaking' : ''} ${cardStateClass}`}
+              className={`crew-card ${isMe ? 'self' : ''} ${isSpeaking ? 'speaking' : ''} ${cardStateClass} ${currentPhase === 'VOTING' && selectedForVote === p.id ? 'selected-for-vote' : ''}`}
               onClick={() => {
                 if (amIDead) return;
                 
@@ -906,6 +912,13 @@ export default function MeetingRoom({
         })}
       </div>
 
+      {/* Voting status message */}
+      {currentPhase === 'VOTING' && voteLocked && (
+        <div style={{textAlign:'center', padding:'6px 0 2px', fontFamily:'Orbitron', fontSize:10, color:'rgba(0,210,106,0.7)', letterSpacing:2}}>
+          VOTE SUBMITTED — AWAITING REMAINING VOTES
+        </div>
+      )}
+
       {/* FOOTER STATUS BAR */}
       <div className="bottom-control-bar">
         <div style={{display:'flex', alignItems:'center', gap:'24px'}}>
@@ -950,8 +963,8 @@ export default function MeetingRoom({
             {globalVolume === 0 ? <VolumeX size={16}/> : <Volume2 size={16}/>}
           </button>
           {/* Phase badge */}
-          <div style={{fontFamily:'Orbitron', fontSize:9, fontWeight:900, letterSpacing:3, color: currentPhase==='VOTING'?'#ff0040':'#29b6f6', border:`1px solid ${currentPhase==='VOTING'?'#ff0040':'rgba(41,182,246,0.4)'}`, padding:'6px 14px', background: currentPhase==='VOTING'?'rgba(255,0,64,0.1)':'rgba(41,182,246,0.05)'}}>
-            ■ {currentPhase === 'DISCUSSION' ? 'MEETING IN PROGRESS' : currentPhase === 'VOTING' ? 'VOTE LOCKED' : currentPhase}
+          <div style={{fontFamily:'Orbitron', fontSize:9, fontWeight:900, letterSpacing:3, color: currentPhase==='VOTING'?(voteLocked?'#00d26a':'#ff0040'):'#29b6f6', border:`1px solid ${currentPhase==='VOTING'?(voteLocked?'#00d26a':'#ff0040'):'rgba(41,182,246,0.4)'}`, padding:'6px 14px', background: currentPhase==='VOTING'?(voteLocked?'rgba(0,210,106,0.1)':'rgba(255,0,64,0.1)'):'rgba(41,182,246,0.05)'}}>
+            ■ {currentPhase === 'DISCUSSION' ? 'MEETING IN PROGRESS' : currentPhase === 'VOTING' ? (voteLocked ? 'VOTE SUBMITTED' : 'VOTING IN PROGRESS') : currentPhase}
           </div>
         </div>
       </div>
