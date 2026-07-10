@@ -44,6 +44,8 @@ const App = () => {
         createRoom,
         playerId,
         joinError,
+        actionError,
+        setActionError,
         setJoinError,
         subscribeToState,
         stompReady,
@@ -248,6 +250,17 @@ const App = () => {
                     )}
                 </div>
             </header>
+
+            {actionError && (
+              <div style={{
+                position: 'fixed', top: 60, left: '50%', transform: 'translateX(-50%)', zIndex: 9999,
+                background: 'rgba(255,0,64,0.15)', border: '1px solid rgba(255,0,64,0.5)',
+                color: '#ff6666', padding: '8px 20px', fontFamily: 'Orbitron', fontSize: 10,
+                letterSpacing: 1, backdropFilter: 'blur(4px)'
+              }}>
+                ✕ {actionError.reason}
+              </div>
+            )}
 
             <div className="game-body">
                 <main className="player-grid terminal-grid">

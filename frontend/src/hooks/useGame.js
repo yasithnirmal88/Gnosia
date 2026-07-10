@@ -15,6 +15,7 @@ export const useGame = (initialRoomCode) => {
   const [scanResult, setScanResult] = useState(null);
   const [doctorResult, setDoctorResult] = useState(null);
   const [joinError, setJoinError] = useState(null);
+  const [actionError, setActionError] = useState(null);
   const [gnosiaChatMessages, setGnosiaChatMessages] = useState([]);
   const [stompReady, setStompReady] = useState(false);
   const [streamReady, setStreamReady] = useState(false);
@@ -84,7 +85,12 @@ export const useGame = (initialRoomCode) => {
             setJoinError(info.message);
             localStorage.removeItem('gnosia_room_code');
             break;
-          case 'GNOSIA_CHAT':
+           case 'ACTION_REJECTED':
+            console.warn('[Gnosia] Action rejected:', info.action, '-', info.reason);
+            setActionError({ action: info.action, reason: info.reason });
+            setTimeout(() => setActionError(null), 6000);
+            break;
+           case 'GNOSIA_CHAT':
             setGnosiaChatMessages(prev => [...prev, info.message]);
             break;
           case 'DM':
@@ -367,6 +373,8 @@ export const useGame = (initialRoomCode) => {
     createRoom,
     playerId,
     joinError,
+    actionError,
+    setActionError,
     setJoinError,
     subscribeToState,
     stompReady,
