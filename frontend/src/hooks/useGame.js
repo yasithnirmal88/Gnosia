@@ -209,36 +209,31 @@ export const useGame = (initialRoomCode) => {
     console.log('[Gnosia] createPeer called:', { targetId, initiator, hasStream: !!userStream.current, tracks: userStream.current?.getTracks().length });
     if (!userStream.current) return;
 
+    // STUN servers (always included)
+    const iceServers = [
+      { urls: import.meta.env.VITE_STUN_URL || "stun:stun.l.google.com:19302" },
+    ];
+
+    // TURN server (optional — set env vars for cross-network support)
+    const turnUrl = import.meta.env.VITE_TURN_URL;
+    const turnUsername = import.meta.env.VITE_TURN_USERNAME;
+    const turnCredential = import.meta.env.VITE_TURN_CREDENTIAL;
+    if (turnUrl) {
+      iceServers.push({ urls: turnUrl, username: turnUsername, credential: turnCredential });
+      // Add TCP and TLS variants if the base URL uses standard ports
+      if (turnUrl.includes(":80")) {
+        iceServers.push({ urls: turnUrl.replace(":80", ":80?transport=tcp"), username: turnUsername, credential: turnCredential });
+      }
+      if (turnUrl.includes(":443")) {
+        iceServers.push({ urls: turnUrl.replace(":443", ":443?transport=tcp"), username: turnUsername, credential: turnCredential });
+      }
+    }
+
     const peer = new Peer({
       initiator,
       trickle: false,
       stream: userStream.current,
-      config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun.relay.metered.ca:80" },
-          {
-            urls: "turn:global.relay.metered.ca:80",
-            username: "23d01fd94ab5d91f5c051a62",
-            credential: "ptZLytdSArEICpYY",
-          },
-          {
-            urls: "turn:global.relay.metered.ca:80?transport=tcp",
-            username: "23d01fd94ab5d91f5c051a62",
-            credential: "ptZLytdSArEICpYY",
-          },
-          {
-            urls: "turn:global.relay.metered.ca:443",
-            username: "23d01fd94ab5d91f5c051a62",
-            credential: "ptZLytdSArEICpYY",
-          },
-          {
-            urls: "turns:global.relay.metered.ca:443?transport=tcp",
-            username: "23d01fd94ab5d91f5c051a62",
-            credential: "ptZLytdSArEICpYY",
-          },
-        ]
-      }
+      config: { iceServers }
     });
 
     peer.on('signal', signal => {
