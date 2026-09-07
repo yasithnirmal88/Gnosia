@@ -26,14 +26,17 @@ public class GameController {
     private final GameService gameService;
     private final SessionIdentityService identityService;
     private final GameActionAuthorizationService gameActionAuthorizationService;
+    private final com.gonosia.game.security.SignalingRateLimiter signalingRateLimiter;
 
     public GameController(SimpMessagingTemplate messagingTemplate, RoomManager roomManager, GameService gameService,
-            SessionIdentityService identityService, GameActionAuthorizationService gameActionAuthorizationService) {
+            SessionIdentityService identityService, GameActionAuthorizationService gameActionAuthorizationService,
+            com.gonosia.game.security.SignalingRateLimiter signalingRateLimiter) {
         this.messagingTemplate = messagingTemplate;
         this.roomManager = roomManager;
         this.gameService = gameService;
         this.identityService = identityService;
         this.gameActionAuthorizationService = gameActionAuthorizationService;
+        this.signalingRateLimiter = signalingRateLimiter;
     }
 
     private final String[] GNOSIA_CHARACTERS = {
@@ -377,16 +380,35 @@ public class GameController {
         Room room = roomManager.getRoom(roomCode);
         if (room == null) return;
 
+        String sessionId = headerAccessor != null ? headerAccessor.getSessionId() : null;
+        if (sessionId == null) return;
+
+        // Prevent signaling spam from a single session.
+        if (!signalingRateLimiter.allow(sessionId)) {
+            log.warn("[SIGNAL] rate limit hit for session {}", sessionId);
+            return;
+        }
+
         SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         if (actor == null) return;
 
-        String targetId = (String) payload.get("targetId");
+        Player sender = actor.player();
+        if (!sender.isAlive() || sender.isCryoslept()) return;
+
+        // Target must be a member of THIS room, alive, reachable, and not the sender.
+        String targetId = (String) (payload != null ? payload.get("targetId") : null);
+        if (targetId == null) return;
         Player target = room.getPlayer(targetId);
-        if (target == null) return;
+        if (target == null || target == sender
+                || !target.isAlive() || !target.isConnected()) {
+            return;
+        }
 
         Map<String, Object> signal = new HashMap<>(payload);
-        signal.put("fromId", actor.player().getId());
+        signal.put("fromId", sender.getId());
         signal.put("type", "SIGNAL");
+        // Route only via the target's secret private topic; a spoofed targetId
+        // that does not belong to this room simply never resolves to a topic.
         String targetTopic = identityService.privateTopicForPlayer(targetId);
         if (targetTopic != null) {
             messagingTemplate.convertAndSend(targetTopic, signal);

@@ -25,11 +25,13 @@ public class SessionIdentityService {
     private static final Pattern PIN_PATTERN = Pattern.compile("[0-9]{4,6}");
 
     private final RoomManager roomManager;
+    private final SignalingRateLimiter signalingRateLimiter;
     private final Map<String, PlayerIdentity> bySession = new ConcurrentHashMap<>();
     private final Map<String, PlayerIdentity> byPlayer = new ConcurrentHashMap<>();
 
-    public SessionIdentityService(RoomManager roomManager) {
+    public SessionIdentityService(RoomManager roomManager, SignalingRateLimiter signalingRateLimiter) {
         this.roomManager = roomManager;
+        this.signalingRateLimiter = signalingRateLimiter;
     }
 
     public record Actor(Player player, String channelKey) {
@@ -139,6 +141,7 @@ public class SessionIdentityService {
     public synchronized void disconnect(String sessionId) {
         PlayerIdentity identity = bySession.remove(sessionId);
         if (identity == null) return;
+        signalingRateLimiter.clear(sessionId);
         identity.setConnected(false);
         identity.setSessionId(null);
         log.info("[AUTH] Session {} disconnected, identity {} released", sessionId, identity.playerId());
