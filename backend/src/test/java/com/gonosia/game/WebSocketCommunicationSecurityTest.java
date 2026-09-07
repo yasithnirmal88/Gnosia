@@ -23,15 +23,27 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+/**
+ * Room list-driven WebRTC signaling security. Runs in its OWN Spring context
+ * (property overrides) so the heavily throttle-sensitive signaling suite is
+ * isolated from the shared default context's accumulated rooms/timers, and with
+ * a generous room-creation budget for the loopback IP the whole suite shares.
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+            "app.rate-limit.room-creation.limit=1000",
+            "app.rate-limit.room-creation.window-ms=60000"
+        })
 class WebSocketCommunicationSecurityTest {
 
     @LocalServerPort
@@ -102,10 +114,18 @@ class WebSocketCommunicationSecurityTest {
     }
 
     private void createRoom(PassThroughStomp creator, String code, String pin) throws Exception {
-        creator.session.send("/app/room/create",
-                Map.of("playerId", creator.playerId, "channelKey", creator.key,
-                        "roomCode", code, "participants", 5, "pin", pin));
-        creator.await("ROOM_CREATED");
+        // Retry a bounded number of times: the embedded broker under a heavy
+        // suite can transiently throttle a room-creation burst (shared loopback
+        // IP), so a single hiccup should not sink the whole class.
+        long deadline = System.currentTimeMillis() + 15000;
+        while (System.currentTimeMillis() < deadline) {
+            creator.session.send("/app/room/create",
+                    Map.of("playerId", creator.playerId, "channelKey", creator.key,
+                            "roomCode", code, "participants", 5, "pin", pin));
+            if (creator.awaitOpt("ROOM_CREATED", 1500) != null) return;
+            Thread.sleep(500);
+        }
+        throw new AssertionError("Timed out creating room " + code + " for " + creator.playerId);
     }
     private void joinRoom(PassThroughStomp client, String code, String pin) throws Exception {
         client.session.send("/app/room/" + code + "/join",
@@ -372,6 +392,137 @@ class WebSocketCommunicationSecurityTest {
         assertThat(b.awaitNoSignal(1500)).isTrue();
     }
 
+    @Test
+    void testSignalFromDeadPlayerSilent() throws Exception {
+        String code = "SIG5";
+        PassThroughStomp[] all = setupStartedRoom("dsg", code, "2323");
+        PassThroughStomp a = all[0], b = all[1];
+        room(code).getPlayer("dsg-a").setAlive(false);
+        a.session.send("/app/room/" + code + "/signal",
+                Map.of("targetId", "dsg-b", "type", "OFFER", "sdp", "ghost"));
+        assertThat(b.awaitNoSignal(1500)).isTrue();
+    }
+
+    @Test
+    void testSignalFromCryosleptPlayerSilent() throws Exception {
+        String code = "SIG6";
+        PassThroughStomp[] all = setupStartedRoom("crs", code, "2424");
+        PassThroughStomp a = all[0], b = all[1];
+        room(code).getPlayer("crs-a").setCryoslept(true);
+        room(code).getPlayer("crs-a").setAlive(false);
+        a.session.send("/app/room/" + code + "/signal",
+                Map.of("targetId", "crs-b", "type", "OFFER", "sdp", "ghost"));
+        assertThat(b.awaitNoSignal(1500)).isTrue();
+    }
+
+    @Test
+    void testSignalToDeadTargetSilent() throws Exception {
+        String code = "SIG7";
+        PassThroughStomp[] all = setupStartedRoom("dtt", code, "2525");
+        PassThroughStomp a = all[0], b = all[1];
+        room(code).getPlayer("dtt-b").setAlive(false);
+        a.session.send("/app/room/" + code + "/signal",
+                Map.of("targetId", "dtt-b", "type", "OFFER", "sdp", "ghost"));
+        // The signal is not routed; nothing reaches the private topic of b.
+        assertThat(b.awaitNoSignal(1500)).isTrue();
+    }
+
+    @Test
+    void testDuplicateSignalsAllDelivered() throws Exception {
+        String code = "SIG8";
+        PassThroughStomp[] all = setupStartedRoom("dup", code, "2626");
+        PassThroughStomp a = all[0], b = all[1];
+        for (int i = 0; i < 3; i++) {
+            a.session.send("/app/room/" + code + "/signal",
+                    Map.of("targetId", "dup-b", "type", "OFFER", "seq", i));
+        }
+        // Routing is idempotent for the same sender/target pair: every duplicate
+        // frame reaches the target (no dedup drop, no collision).
+        Set<Integer> seen = new HashSet<>();
+        long deadline = System.currentTimeMillis() + 8000;
+        while (seen.size() < 3 && System.currentTimeMillis() < deadline) {
+            Map<String, Object> msg = b.awaitSignalFrom("dup-a");
+            seen.add(((Number) msg.get("seq")).intValue());
+        }
+        assertThat(seen).containsExactlyInAnyOrder(0, 1, 2);
+    }
+
+    @Test
+    void testSignalFloodThrottled() throws Exception {
+        String code = "SIG9";
+        PassThroughStomp[] all = setupStartedRoom("fld", code, "2727");
+        PassThroughStomp a = all[0], b = all[1];
+        int sent = 45;
+        for (int i = 0; i < sent; i++) {
+            a.session.send("/app/room/" + code + "/signal",
+                    Map.of("targetId", "fld-b", "type", "OFFER", "seq", i));
+        }
+        // The per-session/player/IP signaling window is 30 per second, so a hard
+        // burst cannot be replayed onto the target without being throttled.
+        int delivered = b.countSignals(2500);
+        assertThat(delivered).isGreaterThan(0);
+        assertThat(delivered).isLessThan(sent);
+    }
+
+    @Test
+    void testSignalAfterLeaveAndReconnect() throws Exception {
+        String code = "SIG10";
+        PassThroughStomp[] all = setupStartedRoom("rc", code, "2828");
+        PassThroughStomp a = all[0], b = all[1];
+
+        // a leaves: the session disconnects and its identity is released.
+        a.session.disconnect();
+        long deadline = System.currentTimeMillis() + 5000;
+        while (System.currentTimeMillis() < deadline
+                && identityService.playerIdForSession(a.session.getSessionId()) != null) {
+            Thread.sleep(50);
+        }
+        assertThat(identityService.playerIdForSession(a.session.getSessionId())).isNull();
+
+        // While a is gone, a signal aimed at a (now-disconnected target) is
+        // silently dropped and is NOT queued for delivery on rejoin.
+        b.session.send("/app/room/" + code + "/signal",
+                Map.of("targetId", "rc-a", "type", "OFFER", "sdp", "stale"));
+
+        // a reconnects with the same playerId + channelKey.
+        PassThroughStomp a2 = newClient("rc-a", "key-rc-a001");
+        joinRoom(a2, code, "2828");
+        assertThat(a2.awaitNoSignal(1200)).isTrue();
+
+        // Fresh signaling works again after the rejoin.
+        a2.session.send("/app/room/" + code + "/signal",
+                Map.of("targetId", "rc-b", "type", "OFFER", "sdp", "recon"));
+        Map<String, Object> sig = b.awaitSignalFrom("rc-a");
+        assertThat(sig.get("sdp")).isEqualTo("recon");
+    }
+
+    @Test
+    void testSimultaneousJoinsRouteEveryPair() throws Exception {
+        String code = "SIG11";
+        PassThroughStomp[] all = setupStartedRoom("sj", code, "2929");
+        // All five members joined in a burst before start; verify that after the
+        // burst every sender/target pair can negotiate directly. Sends are paced
+        // slightly so the shared embedded broker relays them in order without
+        // needing its thread pools to burst-absorb 20 frames at once.
+        for (int i = 0; i < all.length; i++) {
+            for (int j = 0; j < all.length; j++) {
+                if (i == j) continue;
+                String from = "sj-" + (char) ('a' + i);
+                String to = "sj-" + (char) ('a' + j);
+                all[i].session.send("/app/room/" + code + "/signal",
+                        Map.of("targetId", to, "type", "OFFER", "seq", i + "-" + j));
+                Thread.sleep(20);
+            }
+        }
+        Set<String> everyone = new HashSet<>();
+        for (PassThroughStomp p : all) everyone.add(p.playerId);
+        for (PassThroughStomp recipient : all) {
+            Set<String> others = new HashSet<>(everyone);
+            others.remove(recipient.playerId);
+            recipient.awaitSignalsFromAll(others, 20000);
+        }
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     //                    I N V A L I D   S E S S I O N
     // ══════════════════════════════════════════════════════════════════════
@@ -448,6 +599,45 @@ class WebSocketCommunicationSecurityTest {
             return true;
         }
 
+        /** @return the next SIGNAL frame sent by the given player. */
+        Map<String, Object> awaitSignalFrom(String fromId) throws Exception {
+            long deadline = System.currentTimeMillis() + 12000;
+            while (System.currentTimeMillis() < deadline) {
+                Map<String, Object> msg = inbox.poll(500, TimeUnit.MILLISECONDS);
+                if (msg != null && "SIGNAL".equals(msg.get("type"))
+                        && fromId.equals(msg.get("fromId"))) {
+                    return msg;
+                }
+            }
+            throw new AssertionError("Timed out waiting for SIGNAL from " + fromId + " on player " + playerId);
+        }
+
+        /** @return how many SIGNAL frames arrived within the window (drains them). */
+        int countSignals(long ms) throws Exception {
+            int count = 0;
+            long deadline = System.currentTimeMillis() + ms;
+            while (System.currentTimeMillis() < deadline) {
+                Map<String, Object> msg = inbox.poll(200, TimeUnit.MILLISECONDS);
+                if (msg == null) continue;
+                if ("SIGNAL".equals(msg.get("type"))) count++;
+            }
+            return count;
+        }
+
+        /** Drains until a SIGNAL has been seen from every listed sender or the deadline passes. */
+        void awaitSignalsFromAll(Set<String> fromIds, long ms) throws Exception {
+            Set<String> seen = new HashSet<>();
+            long deadline = System.currentTimeMillis() + ms;
+            while (seen.size() < fromIds.size() && System.currentTimeMillis() < deadline) {
+                Map<String, Object> msg = inbox.poll(250, TimeUnit.MILLISECONDS);
+                if (msg != null && "SIGNAL".equals(msg.get("type"))
+                        && fromIds.contains(msg.get("fromId"))) {
+                    seen.add((String) msg.get("fromId"));
+                }
+            }
+            assertThat(seen).as("SIGNALs received on player " + playerId).containsAll(fromIds);
+        }
+
         void subscribePrivate() {
             session.subscribe("/topic/private/" + key, new StompFrameHandler() {
                 @Override
@@ -479,12 +669,22 @@ class WebSocketCommunicationSecurityTest {
         }
 
         Map<String, Object> await(String type) throws Exception {
-            long deadline = System.currentTimeMillis() + 8000;
+            long deadline = System.currentTimeMillis() + 12000;
             while (System.currentTimeMillis() < deadline) {
                 Map<String, Object> msg = inbox.poll(500, TimeUnit.MILLISECONDS);
                 if (msg != null && type.equals(msg.get("type"))) return msg;
             }
             throw new AssertionError("Timed out waiting for " + type + " on player " + playerId);
+        }
+
+        /** @return the frame of {@code type} or null if none arrives within the window. */
+        Map<String, Object> awaitOpt(String type, long ms) throws Exception {
+            long deadline = System.currentTimeMillis() + ms;
+            while (System.currentTimeMillis() < deadline) {
+                Map<String, Object> msg = inbox.poll(200, TimeUnit.MILLISECONDS);
+                if (msg != null && type.equals(msg.get("type"))) return msg;
+            }
+            return null;
         }
 
         Map<String, Object> awaitChat() throws Exception {

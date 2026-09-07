@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import Peer from 'simple-peer';
 import { LeviAudio } from '../audio/LeviAudio';
+import { MeshPeerManager } from '../webrtc/peerManager';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/game-ws';
 
@@ -56,9 +56,29 @@ export const useGame = (initialRoomCode) => {
   const pinRef = useRef('');
 
   // WebRTC — use refs to avoid stale closure issues in callbacks
-  const peers = useRef({});
   const [streams, setStreams] = useState({});
   const userStream = useRef(null);
+  const peerManagerRef = useRef(null);
+  if (!peerManagerRef.current) {
+    peerManagerRef.current = new MeshPeerManager({
+      getLocalStream: () => userStream.current,
+      sendSignal: ({ signal, targetId }) => {
+        if (stompClient.current?.connected) {
+          stompClient.current.publish({
+            destination: `/app/room/${roomCodeRef.current}/signal`,
+            body: JSON.stringify({ signal, targetId }),
+          });
+        }
+      },
+      onRemoteStream: (id, stream) => setStreams(prev => ({ ...prev, [id]: stream })),
+      onPeerRemoved: (id) => setStreams(prev => {
+        if (!prev[id]) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      }),
+    });
+  }
   const roomCodeRef = useRef(roomCode);
 
   // Keep roomCodeRef in sync with state so peer signal callbacks have latest code
@@ -129,8 +149,7 @@ case 'GNOSIA_CHAT':
             break;
           case 'SIGNAL': {
             const { signal, fromId } = info;
-            if (peers.current[fromId]) peers.current[fromId].signal(signal);
-            else createPeer(fromId, false, signal);
+            peerManagerRef.current?.handleSignal(fromId, signal);
             break;
           }
         }
@@ -248,96 +267,32 @@ case 'GNOSIA_CHAT':
     }
   };
 
-  const createPeer = (targetId, initiator, initialSignal = null) => {
-    console.log('[Gnosia] createPeer called:', { targetId, initiator, hasStream: !!userStream.current, tracks: userStream.current?.getTracks().length });
-    if (!userStream.current) return;
-
-    // STUN servers (always included)
-    const iceServers = [
-      { urls: import.meta.env.VITE_STUN_URL || "stun:stun.l.google.com:19302" },
-    ];
-
-    // TURN server (optional — set env vars for cross-network support)
-    const turnUrl = import.meta.env.VITE_TURN_URL;
-    const turnUsername = import.meta.env.VITE_TURN_USERNAME;
-    const turnCredential = import.meta.env.VITE_TURN_CREDENTIAL;
-    if (turnUrl) {
-      iceServers.push({ urls: turnUrl, username: turnUsername, credential: turnCredential });
-      // Add TCP and TLS variants if the base URL uses standard ports
-      if (turnUrl.includes(":80")) {
-        iceServers.push({ urls: turnUrl.replace(":80", ":80?transport=tcp"), username: turnUsername, credential: turnCredential });
-      }
-      if (turnUrl.includes(":443")) {
-        iceServers.push({ urls: turnUrl.replace(":443", ":443?transport=tcp"), username: turnUsername, credential: turnCredential });
-      }
-    }
-
-    const peer = new Peer({
-      initiator,
-      trickle: false,
-      stream: userStream.current,
-      config: { iceServers }
-    });
-
-    peer.on('signal', signal => {
-      console.log('[Gnosia] Sending signal to:', targetId, signal.type);
-      if (stompClient.current?.connected) {
-        stompClient.current.publish({
-          destination: `/app/room/${roomCodeRef.current}/signal`,
-          body: JSON.stringify({ signal, targetId, fromId: playerId }),
-        });
-      }
-    });
-
-    peer.on('connect', () => {
-      console.log('[Gnosia] Peer CONNECTED with:', targetId);
-    });
-
-    peer.on('stream', stream => {
-      console.log('[Gnosia] Got stream from:', targetId, 'tracks:', stream.getTracks().length);
-      setStreams(prev => ({ ...prev, [targetId]: stream }));
-    });
-
-    peer.on('error', (err) => {
-      console.error('[Gnosia] Peer ERROR with:', targetId, err);
-    });
-
-    peer.on('iceStateChange', (state) => {
-      console.log('[Gnosia] ICE state with', targetId, ':', state);
-    });
-
-    peer.on('close', () => {
-      console.log('[Gnosia] Peer CLOSED with:', targetId);
-    });
-
-    if (initialSignal) peer.signal(initialSignal);
-    peers.current[targetId] = peer;
-  };
+  // The peer mesh is reconciled whenever the roster changes, and re-paced on a
+  // short interval so a burst join ramps up gradually instead of bursting a
+  // fresh set of offers each time the players array changes. MeshPeerManager
+  // owns eligibility, caps, deterministic initiator roles, duplicate guarding,
+  // ICE/TURN fallback, and reconnect backoff.
+  useEffect(() => {
+    if (!streamReady || !stompReady || !room?.players || !playerId) return;
+    peerManagerRef.current?.synchronize(room.players, playerId);
+  }, [streamReady, stompReady, room?.players?.length, playerId]);
 
   useEffect(() => {
-    // Guard: STOMP must be ready so signaling subscription is active
-    if (!streamReady || !stompReady || !room?.players || !playerId) return;
+    if (!streamReady || !stompReady || !room?.players) return;
+    const timer = setInterval(() => {
+      peerManagerRef.current?.synchronize(room.players, playerId);
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [streamReady, stompReady, room, playerId]);
 
-    console.log(`[Gnosia] WebRTC peer sweep — streamReady=true, players=${room.players.length}, tracks=${userStream.current?.getTracks().length ?? 0}`);
-
-    // Destroy peers for players no longer in the room
-    const activeIds = new Set(room.players.map(p => p.id));
-    Object.keys(peers.current).forEach(id => {
-      if (id !== playerId && !activeIds.has(id)) {
-        console.log(`[Gnosia] Cleaning up peer for disconnected player: ${id}`);
-        peers.current[id].destroy();
-        delete peers.current[id];
-      }
-    });
-
-    room.players.forEach(p => {
-      if (p.id === playerId || peers.current[p.id]) return;
-      // Deterministic initiator: lexicographically smaller ID starts the offer
-      const shouldInitiate = playerId < p.id;
-      console.log(`[Gnosia] WebRTC: ${shouldInitiate ? 'Initiating' : 'Awaiting'} connection with ${p.name} (${p.id})`);
-      createPeer(p.id, shouldInitiate);
-    });
-  }, [streamReady, stompReady, room?.players?.length, playerId]);
+  // Leaving the room must release every Peer object and stop the local mic so
+  // no negotiation state or MediaStream track leaks into the next room.
+  useEffect(() => {
+    return () => {
+      peerManagerRef.current?.teardown();
+      userStream.current?.getTracks().forEach(t => t.stop());
+    };
+  }, []);
 
   // Handle phase-based music transitions
   useEffect(() => {
