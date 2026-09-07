@@ -2,6 +2,7 @@ package com.gonosia.game.model;
 
 public class RoomCreateRequest {
     private String playerId;
+    private String channelKey;
     private String roomCode;
     private int participants;
     private String pin;
@@ -10,6 +11,9 @@ public class RoomCreateRequest {
 
     public String getPlayerId() { return playerId; }
     public void setPlayerId(String playerId) { this.playerId = playerId; }
+
+    public String getChannelKey() { return channelKey; }
+    public void setChannelKey(String channelKey) { this.channelKey = channelKey; }
 
     public String getRoomCode() { return roomCode; }
     public void setRoomCode(String roomCode) { this.roomCode = roomCode; }

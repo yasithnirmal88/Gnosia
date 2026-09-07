@@ -93,14 +93,16 @@ const App = () => {
         if (!room) return;
         const botsNeeded = room.config.maxPlayers - room.players.length;
         for (let i = 0; i < botsNeeded; i++) {
+            const botId = 'DEV-BOT-' + Math.random().toString(36).slice(2, 12);
+            const botKey = 'dev-bot-key-' + Math.random().toString(36).slice(2, 12);
             const client = new Client({
-                webSocketFactory: () => new SockJS('http://localhost:8080/game-ws'),
+                webSocketFactory: () => new SockJS(import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/game-ws'),
                 debug: () => {},
             });
             client.onConnect = () => {
                 client.publish({
                     destination: `/app/room/${room.roomCode}/join`,
-                    body: JSON.stringify({ id: 'DEV-BOT-' + Math.random(), pin: '' }),
+                    body: JSON.stringify({ id: botId, channelKey: botKey, pin: '' }),
                 });
             };
             client.activate();

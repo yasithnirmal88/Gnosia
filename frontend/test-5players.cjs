@@ -10,6 +10,7 @@ const PLAYER_NAMES = ['Setsu', 'Jina', 'SQ', 'Raqio', 'Stella'];
 
 const players = {};
 const playerIds = {};
+const playerKeys = {};
 const roles = {};
 const alivePlayers = {};
 const results = { connected: 0, errors: [], votes: 0, kills: 0, scans: 0, protects: 0 };
@@ -35,7 +36,9 @@ function voteOnBehalfOf(name, voterId, targetId) {
 function createPlayer(index) {
     const name = PLAYER_NAMES[index];
     const id = 'test-player-' + index + '-' + crypto.randomUUID().slice(0, 8);
+    const key = 'test-key-' + index + '-' + crypto.randomUUID().slice(0, 8);
     playerIds[name] = id;
+    playerKeys[name] = key;
     console.log(`[${name}] Creating player with ID: ${id}`);
 
     const client = new Client({
@@ -51,7 +54,7 @@ function createPlayer(index) {
         console.log(`[${name}] Connected (${results.connected}/5)`);
 
         // Subscribe to private messages
-        client.subscribe(`/topic/user/${id}/private`, (response) => {
+        client.subscribe(`/topic/private/${key}`, (response) => {
             const info = JSON.parse(response.body);
             if (info.type === 'PRIVATE_INFO' && info.role && !roles[name]) {
                 roles[name] = info.role;
@@ -66,7 +69,7 @@ function createPlayer(index) {
                         if (pData && pData.client) {
                             pData.client.publish({
                                 destination: `/app/room/${info.roomCode}/join`,
-                                body: JSON.stringify({ id: pData.id, pin: '' }),
+                                body: JSON.stringify({ id: pData.id, channelKey: playerKeys[pName], pin: '' }),
                             });
                         }
                     }
@@ -183,7 +186,7 @@ function createPlayer(index) {
             setTimeout(() => {
                 client.publish({
                     destination: '/app/room/create',
-                    body: JSON.stringify({ playerId: id, roomCode: ROOM_CODE, participants: 5, pin: '' }),
+                    body: JSON.stringify({ playerId: id, channelKey: key, roomCode: ROOM_CODE, participants: 5, pin: '' }),
                 });
             }, 1000);
         } else {

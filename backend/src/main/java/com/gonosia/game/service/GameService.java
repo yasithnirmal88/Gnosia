@@ -1,6 +1,7 @@
 package com.gonosia.game.service;
 
 import com.gonosia.game.model.*;
+import com.gonosia.game.security.SessionIdentityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -16,12 +17,14 @@ public class GameService {
     private final SimpMessagingTemplate messagingTemplate;
     private final GameLogicService gameLogicService;
     private final AnalyticsService analyticsService;
+    private final SessionIdentityService identityService;
 
     public GameService(SimpMessagingTemplate messagingTemplate, GameLogicService gameLogicService,
-            AnalyticsService analyticsService) {
+            AnalyticsService analyticsService, SessionIdentityService identityService) {
         this.messagingTemplate = messagingTemplate;
         this.gameLogicService = gameLogicService;
         this.analyticsService = analyticsService;
+        this.identityService = identityService;
     }
 
     public void transitionPhase(Room room) {
@@ -312,7 +315,10 @@ public class GameService {
             if (player.getRole() == Role.GNOSIA) {
                 privateInfo.put("partners", gnosiaIds);
             }
-            messagingTemplate.convertAndSend("/topic/user/" + player.getId() + "/private", privateInfo);
+            String topic = identityService.privateTopicForPlayer(player.getId());
+            if (topic != null) {
+                messagingTemplate.convertAndSend(topic, privateInfo);
+            }
         }
     }
 

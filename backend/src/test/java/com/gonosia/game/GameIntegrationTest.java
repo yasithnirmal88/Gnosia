@@ -2,6 +2,7 @@ package com.gonosia.game;
 
 import com.gonosia.game.controller.GameController;
 import com.gonosia.game.model.*;
+import com.gonosia.game.security.SessionIdentityService;
 import com.gonosia.game.service.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,6 +10,7 @@ import org.mockito.ArgumentMatcher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.Map;
@@ -23,6 +25,7 @@ class GameIntegrationTest {
     @Autowired private GameService gameService;
     @Autowired private GameLogicService gameLogicService;
     @Autowired private GameController gameController;
+    @Autowired private SessionIdentityService identityService;
     @MockBean private SimpMessagingTemplate messagingTemplate;
     @MockBean private AnalyticsService analyticsService;
 
@@ -44,6 +47,12 @@ class GameIntegrationTest {
 
         room.addPlayer(p1); room.addPlayer(p2); room.addPlayer(p3);
         room.addPlayer(p4); room.addPlayer(p5);
+
+        identityService.claim("s1", "p1", "test-key-p1", "TEST1");
+        identityService.claim("s2", "p2", "test-key-p2", "TEST1");
+        identityService.claim("s3", "p3", "test-key-p3", "TEST1");
+        identityService.claim("s4", "p4", "test-key-p4", "TEST1");
+        identityService.claim("s5", "p5", "test-key-p5", "TEST1");
     }
 
     private Player createPlayer(String id, String name) {
@@ -52,6 +61,16 @@ class GameIntegrationTest {
         p.setCryoslept(false); p.setConnected(true);
         p.setAvatar("/images/" + name + ".png");
         return p;
+    }
+
+    private static String sessionFor(String playerId) {
+        return "s" + playerId.replace("p", "");
+    }
+
+    private SimpMessageHeaderAccessor h(String sessionId) {
+        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create();
+        accessor.setSessionId(sessionId);
+        return accessor;
     }
 
     private static String dest(String expected) {
@@ -90,7 +109,9 @@ class GameIntegrationTest {
 
         // Vote out p5 (Human at index 4) so game doesn't end
         room.getPlayers().forEach(p ->
-            gameController.vote("TEST1", Map.of("voterId", p.getId(), "targetId", "p5")));
+            gameController.vote("TEST1",
+                Map.of("voterId", p.getId(), "targetId", "p5"),
+                h(sessionFor(p.getId()))));
 
         gameService.transitionPhase(room); // VOTING → RESULT
         gameService.transitionPhase(room); // RESULT → CRYOSLEEP
@@ -140,11 +161,11 @@ class GameIntegrationTest {
     void testVotingAndCryosleep() {
         setupVoting();
 
-        gameController.vote("TEST1", Map.of("voterId", "p1", "targetId", "p4"));
-        gameController.vote("TEST1", Map.of("voterId", "p2", "targetId", "p4"));
-        gameController.vote("TEST1", Map.of("voterId", "p3", "targetId", "p4"));
-        gameController.vote("TEST1", Map.of("voterId", "p4", "targetId", "p5"));
-        gameController.vote("TEST1", Map.of("voterId", "p5", "targetId", "p4"));
+        gameController.vote("TEST1", Map.of("voterId", "p1", "targetId", "p4"), h("s1"));
+        gameController.vote("TEST1", Map.of("voterId", "p2", "targetId", "p4"), h("s2"));
+        gameController.vote("TEST1", Map.of("voterId", "p3", "targetId", "p4"), h("s3"));
+        gameController.vote("TEST1", Map.of("voterId", "p4", "targetId", "p5"), h("s4"));
+        gameController.vote("TEST1", Map.of("voterId", "p5", "targetId", "p4"), h("s5"));
 
         assertThat(room.getGameState().getCurrentVotes()).hasSize(5);
 
@@ -158,11 +179,11 @@ class GameIntegrationTest {
     void testVotingTiePicksOneOfTied() {
         setupVoting();
 
-        gameController.vote("TEST1", Map.of("voterId", "p1", "targetId", "p4"));
-        gameController.vote("TEST1", Map.of("voterId", "p2", "targetId", "p4"));
-        gameController.vote("TEST1", Map.of("voterId", "p3", "targetId", "p5"));
-        gameController.vote("TEST1", Map.of("voterId", "p4", "targetId", "p5"));
-        gameController.vote("TEST1", Map.of("voterId", "p5", "targetId", "p1"));
+        gameController.vote("TEST1", Map.of("voterId", "p1", "targetId", "p4"), h("s1"));
+        gameController.vote("TEST1", Map.of("voterId", "p2", "targetId", "p4"), h("s2"));
+        gameController.vote("TEST1", Map.of("voterId", "p3", "targetId", "p5"), h("s3"));
+        gameController.vote("TEST1", Map.of("voterId", "p4", "targetId", "p5"), h("s4"));
+        gameController.vote("TEST1", Map.of("voterId", "p5", "targetId", "p1"), h("s5"));
 
         gameService.transitionPhase(room);
         assertThat(room.getGameState().getLastCryosleptPlayerId()).isIn("p4", "p5");
@@ -173,11 +194,11 @@ class GameIntegrationTest {
         setupVoting();
 
         // Vote out p5 (Human) — Gnosia (p4) remains
-        gameController.vote("TEST1", Map.of("voterId", "p1", "targetId", "p5"));
-        gameController.vote("TEST1", Map.of("voterId", "p2", "targetId", "p5"));
-        gameController.vote("TEST1", Map.of("voterId", "p3", "targetId", "p5"));
-        gameController.vote("TEST1", Map.of("voterId", "p4", "targetId", "p5"));
-        gameController.vote("TEST1", Map.of("voterId", "p5", "targetId", "p1"));
+        gameController.vote("TEST1", Map.of("voterId", "p1", "targetId", "p5"), h("s1"));
+        gameController.vote("TEST1", Map.of("voterId", "p2", "targetId", "p5"), h("s2"));
+        gameController.vote("TEST1", Map.of("voterId", "p3", "targetId", "p5"), h("s3"));
+        gameController.vote("TEST1", Map.of("voterId", "p4", "targetId", "p5"), h("s4"));
+        gameController.vote("TEST1", Map.of("voterId", "p5", "targetId", "p1"), h("s5"));
 
         gameService.transitionPhase(room);
         gameService.transitionPhase(room);
@@ -190,9 +211,9 @@ class GameIntegrationTest {
     void testEngineerScan() {
         setupWarp();
 
-        gameController.scan("TEST1", Map.of("scannerId", "p1", "targetId", "p4"));
+        gameController.scan("TEST1", Map.of("scannerId", "p1", "targetId", "p4"), h("s1"));
         verify(messagingTemplate, atLeastOnce()).convertAndSend(
-            dest("/topic/user/p1/private"), anyPayload());
+            dest("/topic/private/test-key-p1"), anyPayload());
         assertThat(room.getGameState().getPlayerActionDone())
             .containsEntry("p1", "SCANNED");
     }
@@ -201,18 +222,18 @@ class GameIntegrationTest {
     void testEngineerScanFailsForNonEngineer() {
         setupWarp();
 
-        gameController.scan("TEST1", Map.of("scannerId", "p2", "targetId", "p4"));
+        gameController.scan("TEST1", Map.of("scannerId", "p2", "targetId", "p4"), h("s2"));
         verify(messagingTemplate, atLeastOnce()).convertAndSend(
-            dest("/topic/user/p2/private"), payloadWith("type", "ACTION_REJECTED"));
+            dest("/topic/private/test-key-p2"), payloadWith("type", "ACTION_REJECTED"));
     }
 
     @Test
     void testDoctorCheckOnCryosleptTarget() {
         setupWarp();
 
-        gameController.doctorCheck("TEST1", Map.of("doctorId", "p2", "targetId", "p5"));
+        gameController.doctorCheck("TEST1", Map.of("doctorId", "p2", "targetId", "p5"), h("s2"));
         verify(messagingTemplate, atLeastOnce()).convertAndSend(
-            dest("/topic/user/p2/private"), anyPayload());
+            dest("/topic/private/test-key-p2"), anyPayload());
         assertThat(room.getGameState().getPlayerActionDone())
             .containsEntry("p2", "DOCTOR_CHECKED");
     }
@@ -221,16 +242,16 @@ class GameIntegrationTest {
     void testDoctorCheckRejectedForNonCryosleptTarget() {
         setupVoting();
 
-        gameController.doctorCheck("TEST1", Map.of("doctorId", "p2", "targetId", "p5"));
+        gameController.doctorCheck("TEST1", Map.of("doctorId", "p2", "targetId", "p5"), h("s2"));
         verify(messagingTemplate, atLeastOnce()).convertAndSend(
-            dest("/topic/user/p2/private"), payloadWith("type", "ACTION_REJECTED"));
+            dest("/topic/private/test-key-p2"), payloadWith("type", "ACTION_REJECTED"));
     }
 
     @Test
     void testGuardianAngelProtect() {
         setupWarp();
 
-        gameController.protect("TEST1", Map.of("gaId", "p3", "targetId", "p1"));
+        gameController.protect("TEST1", Map.of("gaId", "p3", "targetId", "p1"), h("s3"));
         assertThat(room.getGameState().getProtectedPlayerId()).isEqualTo("p1");
         assertThat(room.getGameState().getPlayerActionDone())
             .containsEntry("p3", "PROTECTED");
@@ -240,7 +261,7 @@ class GameIntegrationTest {
     void testGnosiaKillConsensus() {
         setupWarp();
 
-        gameController.kill("TEST1", Map.of("voterId", "p4", "targetId", "p1"));
+        gameController.kill("TEST1", Map.of("voterId", "p4", "targetId", "p1"), h("s4"));
         assertThat(room.getGameState().getGnosiaTargetPlayerId()).isEqualTo("p1");
         assertThat(room.getGameState().getPlayerActionDone())
             .containsEntry("p4", "KILL_VOTE_CAST");
@@ -250,7 +271,7 @@ class GameIntegrationTest {
     void testGnosiaKillResolvedOnWarpEnd() {
         setupWarp();
 
-        gameController.kill("TEST1", Map.of("voterId", "p4", "targetId", "p1"));
+        gameController.kill("TEST1", Map.of("voterId", "p4", "targetId", "p1"), h("s4"));
         gameService.transitionPhase(room);
 
         assertThat(room.getPlayer("p1").isAlive()).isFalse();
@@ -260,8 +281,8 @@ class GameIntegrationTest {
     void testGuardianAngelShieldsFromGnosiaKill() {
         setupWarp();
 
-        gameController.protect("TEST1", Map.of("gaId", "p3", "targetId", "p1"));
-        gameController.kill("TEST1", Map.of("voterId", "p4", "targetId", "p1"));
+        gameController.protect("TEST1", Map.of("gaId", "p3", "targetId", "p1"), h("s3"));
+        gameController.kill("TEST1", Map.of("voterId", "p4", "targetId", "p1"), h("s4"));
         gameService.transitionPhase(room);
 
         assertThat(room.getPlayer("p1").isAlive()).isTrue();
@@ -274,11 +295,11 @@ class GameIntegrationTest {
         setupVoting();
 
         // Vote out p4 (Gnosia)
-        gameController.vote("TEST1", Map.of("voterId", "p1", "targetId", "p4"));
-        gameController.vote("TEST1", Map.of("voterId", "p2", "targetId", "p4"));
-        gameController.vote("TEST1", Map.of("voterId", "p3", "targetId", "p4"));
-        gameController.vote("TEST1", Map.of("voterId", "p4", "targetId", "p5"));
-        gameController.vote("TEST1", Map.of("voterId", "p5", "targetId", "p4"));
+        gameController.vote("TEST1", Map.of("voterId", "p1", "targetId", "p4"), h("s1"));
+        gameController.vote("TEST1", Map.of("voterId", "p2", "targetId", "p4"), h("s2"));
+        gameController.vote("TEST1", Map.of("voterId", "p3", "targetId", "p4"), h("s3"));
+        gameController.vote("TEST1", Map.of("voterId", "p4", "targetId", "p5"), h("s4"));
+        gameController.vote("TEST1", Map.of("voterId", "p5", "targetId", "p4"), h("s5"));
 
         gameService.transitionPhase(room);
         gameService.transitionPhase(room);
@@ -299,14 +320,15 @@ class GameIntegrationTest {
 
         // Vote out p5 (Human)
         room.getPlayers().forEach(p ->
-            gameController.vote("TEST1", Map.of("voterId", p.getId(), "targetId", "p5")));
+            gameController.vote("TEST1", Map.of("voterId", p.getId(), "targetId", "p5"),
+                h(sessionFor(p.getId()))));
 
         gameService.transitionPhase(room);
         gameService.transitionPhase(room);
         gameService.transitionPhase(room);
 
         // At WARP: kill p1 (Engineer)
-        gameController.kill("TEST1", Map.of("voterId", "p4", "targetId", "p1"));
+        gameController.kill("TEST1", Map.of("voterId", "p4", "targetId", "p1"), h("s4"));
         gameService.transitionPhase(room);
         assertThat(room.getPlayer("p1").isAlive()).isFalse();
 
@@ -351,9 +373,9 @@ class GameIntegrationTest {
 
     @Test
     void testVoteRejectedOutsideVotingPhase() {
-        gameController.vote("TEST1", Map.of("voterId", "p1", "targetId", "p5"));
+        gameController.vote("TEST1", Map.of("voterId", "p1", "targetId", "p5"), h("s1"));
         verify(messagingTemplate, atLeastOnce()).convertAndSend(
-            dest("/topic/user/p1/private"), payloadWith("type", "ACTION_REJECTED"));
+            dest("/topic/private/test-key-p1"), payloadWith("type", "ACTION_REJECTED"));
     }
 
     @Test
@@ -361,18 +383,18 @@ class GameIntegrationTest {
         setupWarp();
         p1.setAlive(false);
 
-        gameController.scan("TEST1", Map.of("scannerId", "p1", "targetId", "p4"));
+        gameController.scan("TEST1", Map.of("scannerId", "p1", "targetId", "p4"), h("s1"));
         verify(messagingTemplate, atLeastOnce()).convertAndSend(
-            dest("/topic/user/p1/private"), payloadWith("type", "ACTION_REJECTED"));
+            dest("/topic/private/test-key-p1"), payloadWith("type", "ACTION_REJECTED"));
     }
 
     @Test
     void testKillRejectedForNonGnosia() {
         setupWarp();
 
-        gameController.kill("TEST1", Map.of("voterId", "p1", "targetId", "p5"));
+        gameController.kill("TEST1", Map.of("voterId", "p1", "targetId", "p5"), h("s1"));
         verify(messagingTemplate, atLeastOnce()).convertAndSend(
-            dest("/topic/user/p1/private"), payloadWith("type", "ACTION_REJECTED"));
+            dest("/topic/private/test-key-p1"), payloadWith("type", "ACTION_REJECTED"));
     }
 
     @Test
@@ -380,17 +402,19 @@ class GameIntegrationTest {
         setupWarp();
         p1.setCryoslept(true);
 
-        gameController.scan("TEST1", Map.of("scannerId", "p1", "targetId", "p4"));
+        gameController.scan("TEST1", Map.of("scannerId", "p1", "targetId", "p4"), h("s1"));
         verify(messagingTemplate, atLeastOnce()).convertAndSend(
-            dest("/topic/user/p1/private"), payloadWith("type", "ACTION_REJECTED"));
+            dest("/topic/private/test-key-p1"), payloadWith("type", "ACTION_REJECTED"));
     }
 
     @Test
     void testActionRejectedForUnknownPlayer() {
         setupWarp();
 
-        gameController.scan("TEST1", Map.of("scannerId", "unknown", "targetId", "p4"));
+        gameController.scan("TEST1", Map.of("scannerId", "unknown", "targetId", "p4"), h("s99"));
         verify(messagingTemplate, never()).convertAndSend(
-            dest("/topic/user/unknown/private"), anyPayload());
+            argThat((ArgumentMatcher<String>) d -> d != null && d.startsWith("/topic/private/")),
+            payloadWith("type", "SCAN_RESULT"));
+        assertThat(room.getGameState().getPlayerActionDone()).doesNotContainKey("unknown");
     }
 }

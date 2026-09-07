@@ -27,6 +27,17 @@ export const useGame = (initialRoomCode) => {
     return newId;
   });
 
+  // Identity key: persistent secret that binds playerId to this client's session.
+  // The server requires it to bind an identity and uses it for /topic/private/{key}.
+  const [identityKey] = useState(() => {
+    const stored = localStorage.getItem('gnosia_identity_key');
+    if (stored) return stored;
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    const newKey = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem('gnosia_identity_key', newKey);
+    return newKey;
+  });
+
   const stompClient = useRef(null);
 
   // WebRTC — use refs to avoid stale closure issues in callbacks
@@ -62,7 +73,7 @@ export const useGame = (initialRoomCode) => {
 
       // ─── Centralized Player-Private Service ───
       // Subscribing once here handles room-creation, role-info, results, and signaling
-      client.subscribe(`/topic/user/${playerId}/private`, (response) => {
+      client.subscribe(`/topic/private/${identityKey}`, (response) => {
         const info = JSON.parse(response.body);
         console.log('[Gnosia] PRIVATE MSG Received:', info);
         
@@ -100,14 +111,13 @@ export const useGame = (initialRoomCode) => {
                 return { ...prev, [partnerId]: [...current, info.message] };
             });
             break;
+          case 'SIGNAL': {
+            const { signal, fromId } = info;
+            if (peers.current[fromId]) peers.current[fromId].signal(signal);
+            else createPeer(fromId, false, signal);
+            break;
+          }
         }
-      });
-
-      // Signaling channel
-      client.subscribe(`/topic/user/${playerId}/signal`, (msg) => {
-        const { signal, fromId } = JSON.parse(msg.body);
-        if (peers.current[fromId]) peers.current[fromId].signal(signal);
-        else createPeer(fromId, false, signal);
       });
 
       // Initial Join (if code already exists in URL or state)
@@ -170,7 +180,7 @@ export const useGame = (initialRoomCode) => {
     // Join with ID and optional PIN
     client.publish({
       destination: `/app/room/${code}/join`,
-      body: JSON.stringify({ id: playerId, pin: pin }),
+      body: JSON.stringify({ id: playerId, channelKey: identityKey, pin: pin }),
     });
   };
 
@@ -180,7 +190,7 @@ export const useGame = (initialRoomCode) => {
     if (stompClient.current?.connected && stompReady) {
       stompClient.current.publish({
         destination: `/app/room/create`,
-        body: JSON.stringify({ playerId, roomCode: roomCodeStr, participants, pin }),
+        body: JSON.stringify({ playerId, channelKey: identityKey, roomCode: roomCodeStr, participants, pin }),
       });
     }
   };
