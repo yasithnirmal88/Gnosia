@@ -12,6 +12,7 @@ import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -188,6 +189,42 @@ public class SessionIdentityService {
         if (room != null) {
             Player player = room.getPlayer(playerId);
             if (player != null) player.setConnected(false);
+            // If that was the last live player, start the abandoned-room window
+            // — a reconnect inside it keeps the room alive.
+            if (room.connectedPlayerCount() == 0) {
+                roomManager.markAllDisconnected(room);
+            }
         }
+    }
+
+    /**
+     * Releases every identity (byPlayer / bySession / IP) bound to a room that no
+     * longer exists. Called when a room is retired so stale player identities can
+     * never accumulate for removed rooms.
+     */
+    public synchronized void releaseRoom(String roomCode) {
+        if (roomCode == null) return;
+        for (PlayerIdentity identity : byPlayer.values()) {
+            if (roomCode.equals(identity.roomCode())) {
+                byPlayer.remove(identity.playerId());
+                // A live identity has a session bound; a disconnected one has none
+                // (sessionId is null), and its session/IP were already released at
+                // disconnect time.
+                if (identity.sessionId() != null) {
+                    bySession.remove(identity.sessionId());
+                    sessionIps.remove(identity.sessionId());
+                }
+            }
+        }
+    }
+
+    /**
+     * Safety-net sweep for stale identities: removes player identities bound to a
+     * room that no longer exists, and session bindings whose identity was already
+     * removed. Runs as part of the room cleanup sweep.
+     */
+    public synchronized void sweepStale(Set<String> aliveRoomCodes) {
+        byPlayer.values().removeIf(id -> id.roomCode() == null || !aliveRoomCodes.contains(id.roomCode()));
+        bySession.entrySet().removeIf(e -> !byPlayer.containsValue(e.getValue()));
     }
 }

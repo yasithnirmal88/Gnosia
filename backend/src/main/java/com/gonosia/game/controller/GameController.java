@@ -211,6 +211,11 @@ public class GameController {
             return;
         }
 
+        // Any successful join/reconnect proves the room is alive: it clears the
+        // abandoned-room window ({@link RoomManager#markAllDisconnected}) so the
+        // cleanup sweep keeps the room for legitimate reconnects.
+        roomManager.touch(room);
+
         if (existing != null) {
             existing.setConnected(true);
             log.info("Player ID " + existing.getId() + " joined/reconnected to " + normalizedCode);

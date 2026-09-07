@@ -6,6 +6,20 @@ import { LeviAudio } from '../audio/LeviAudio';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/game-ws';
 
+// In-memory bounds for replayable message lists so a long-running tab cannot
+// accumulate unbounded state in React memory. The UI already only renders a
+// sliding window (e.g. slice(-6)); these caps bound the source arrays too.
+const MAX_PUBLIC_MESSAGES = 500;
+const MAX_GNOSIA_CHAT_MESSAGES = 200;
+const MAX_DM_MESSAGES_PER_PARTNER = 200;
+
+/** Append `item` to `list`, dropping the oldest entries beyond `max`. */
+const pushBounded = (list, item, max) => {
+  if (max <= 0) return [item];
+  const next = list.length >= max ? list.slice(-(max - 1)) : list;
+  return [...next, item];
+};
+
 export const useGame = (initialRoomCode) => {
   const [roomCode, setRoomCode] = useState(initialRoomCode);
   const [room, setRoom] = useState(null);
@@ -103,14 +117,14 @@ export const useGame = (initialRoomCode) => {
             setActionError({ action: info.action, reason: info.reason });
             setTimeout(() => setActionError(null), 6000);
             break;
-           case 'GNOSIA_CHAT':
-            setGnosiaChatMessages(prev => [...prev, info.message]);
+case 'GNOSIA_CHAT':
+            setGnosiaChatMessages(prev => pushBounded(prev, info.message, MAX_GNOSIA_CHAT_MESSAGES));
             break;
           case 'DM':
             setDmMessages(prev => {
                 const partnerId = info.withId;
                 const current = prev[partnerId] || [];
-                return { ...prev, [partnerId]: [...current, info.message] };
+                return { ...prev, [partnerId]: pushBounded(current, info.message, MAX_DM_MESSAGES_PER_PARTNER) };
             });
             break;
           case 'SIGNAL': {
@@ -173,7 +187,7 @@ export const useGame = (initialRoomCode) => {
 
     // Chat
     client.subscribe(`/topic/room/${code}/chat`, (response) => {
-      setMessages(prev => [...prev, JSON.parse(response.body)]);
+      setMessages(prev => pushBounded(prev, JSON.parse(response.body), MAX_PUBLIC_MESSAGES));
     });
 
     // Special Events (like Levi Voice Announcements)

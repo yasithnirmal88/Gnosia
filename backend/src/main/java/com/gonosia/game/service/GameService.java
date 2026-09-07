@@ -18,13 +18,15 @@ public class GameService {
     private final GameLogicService gameLogicService;
     private final AnalyticsService analyticsService;
     private final SessionIdentityService identityService;
+    private final RoomManager roomManager;
 
     public GameService(SimpMessagingTemplate messagingTemplate, GameLogicService gameLogicService,
-            AnalyticsService analyticsService, SessionIdentityService identityService) {
+            AnalyticsService analyticsService, SessionIdentityService identityService, RoomManager roomManager) {
         this.messagingTemplate = messagingTemplate;
         this.gameLogicService = gameLogicService;
         this.analyticsService = analyticsService;
         this.identityService = identityService;
+        this.roomManager = roomManager;
     }
 
     public void transitionPhase(Room room) {
@@ -36,6 +38,7 @@ public class GameService {
         switch (currentPhase) {
             case LOBBY:
                 // Starting game — first meeting
+                roomManager.markActive(room);
                 gameLogicService.assignRoles(room);
                 room.incrementMeetingRound(); // Round 1
                 state.setPhase(Phase.INTRO);
@@ -79,7 +82,7 @@ public class GameService {
             case VOTING:
                 // Store voting history and disclosed results
                 Map<String, String> currentVotesCopy = new HashMap<>(state.getCurrentVotes());
-                room.getVotingHistory().add(currentVotesCopy);
+                roomManager.recordVotingRound(room, currentVotesCopy);
                 state.setVotingResults(currentVotesCopy); // For reveal in UI
                 
                 String targetId = gameLogicService.resolveVoting(room);
@@ -122,6 +125,7 @@ public class GameService {
                 Role winner = gameLogicService.checkWin(room); // Refactored to return winner
                 if (winner != null) {
                     state.setPhase(Phase.GAME_OVER);
+                    roomManager.markGameOver(room);
                     analyticsService.endTracking(room, winner);
                     
                     // --- Levi: Victory Announcement ---
@@ -236,6 +240,7 @@ public class GameService {
                 Role warpWinner = gameLogicService.checkWin(room);
                 if (warpWinner != null) {
                     state.setPhase(Phase.GAME_OVER);
+                    roomManager.markGameOver(room);
                     analyticsService.endTracking(room, warpWinner);
                     log.info("[WARP] Game over following elimination. Winner: {}", warpWinner);
                 } else {
