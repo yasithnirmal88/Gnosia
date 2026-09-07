@@ -10,9 +10,11 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 public class IdentityChannelInterceptor implements ChannelInterceptor {
 
     private final SessionIdentityService identityService;
+    private final RateLimitService rateLimitService;
 
-    public IdentityChannelInterceptor(SessionIdentityService identityService) {
+    public IdentityChannelInterceptor(SessionIdentityService identityService, RateLimitService rateLimitService) {
         this.identityService = identityService;
+        this.rateLimitService = rateLimitService;
     }
 
     @Override
@@ -20,6 +22,15 @@ public class IdentityChannelInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
         if (accessor == null || accessor.getCommand() != StompCommand.SEND) {
             return message;
+        }
+
+        // Catch-all flood guard: bound any inbound app SEND by a per-session/IP
+        // budget, so even an unauthenticated session cannot flood the broker with
+        // high-frequency frames. Dropped before any handler sees it, so no state is
+        // mutated.
+        String sessionId = accessor.getSessionId();
+        if (!rateLimitService.allowMessageFlood(sessionId)) {
+            return null;
         }
 
         String destination = accessor.getDestination();
@@ -31,7 +42,6 @@ public class IdentityChannelInterceptor implements ChannelInterceptor {
             return message;
         }
 
-        String sessionId = accessor.getSessionId();
         String playerId = identityService.playerIdForSession(sessionId);
         if (playerId == null) {
             return null;

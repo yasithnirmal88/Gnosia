@@ -3,6 +3,7 @@ package com.gonosia.game;
 import com.gonosia.game.model.Phase;
 import com.gonosia.game.model.Room;
 import com.gonosia.game.model.Role;
+import com.gonosia.game.security.RateLimitService;
 import com.gonosia.game.security.SessionIdentityService;
 import com.gonosia.game.service.GameService;
 import com.gonosia.game.service.RoomManager;
@@ -39,6 +40,7 @@ class WebSocketCommunicationSecurityTest {
     @Autowired private RoomManager roomManager;
     @Autowired private GameService gameService;
     @Autowired private SessionIdentityService identityService;
+    @Autowired private RateLimitService rateLimitService;
 
     private WebSocketStompClient stompClient;
     private final List<StompSession> openSessions = new ArrayList<>();
@@ -47,6 +49,9 @@ class WebSocketCommunicationSecurityTest {
     void setUp() {
         stompClient = new WebSocketStompClient(new StandardWebSocketClient());
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+        // All integration-test clients share the same loopback IP, so the shared
+        // in-memory counters would otherwise bleed across test methods.
+        rateLimitService.resetAll();
     }
 
     @AfterEach

@@ -26,7 +26,8 @@ import static org.mockito.Mockito.*;
  *   cryoslept player, invalid target, cross-room target, repeated action,
  *   and spoofed actor ID — for every action endpoint.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE,
+        properties = "app.rate-limit.enabled=false")
 class GameActionAuthorizationTest {
 
     @Autowired private RoomManager roomManager;

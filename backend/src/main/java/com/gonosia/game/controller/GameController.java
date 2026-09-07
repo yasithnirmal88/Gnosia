@@ -3,6 +3,7 @@ package com.gonosia.game.controller;
 import com.gonosia.game.model.*;
 import com.gonosia.game.security.ActionDeniedException;
 import com.gonosia.game.security.GameActionAuthorizationService;
+import com.gonosia.game.security.RateLimitService;
 import com.gonosia.game.security.SessionIdentityService;
 import com.gonosia.game.service.*;
 import org.slf4j.Logger;
@@ -26,17 +27,17 @@ public class GameController {
     private final GameService gameService;
     private final SessionIdentityService identityService;
     private final GameActionAuthorizationService gameActionAuthorizationService;
-    private final com.gonosia.game.security.SignalingRateLimiter signalingRateLimiter;
+    private final RateLimitService rateLimitService;
 
     public GameController(SimpMessagingTemplate messagingTemplate, RoomManager roomManager, GameService gameService,
             SessionIdentityService identityService, GameActionAuthorizationService gameActionAuthorizationService,
-            com.gonosia.game.security.SignalingRateLimiter signalingRateLimiter) {
+            RateLimitService rateLimitService) {
         this.messagingTemplate = messagingTemplate;
         this.roomManager = roomManager;
         this.gameService = gameService;
         this.identityService = identityService;
         this.gameActionAuthorizationService = gameActionAuthorizationService;
-        this.signalingRateLimiter = signalingRateLimiter;
+        this.rateLimitService = rateLimitService;
     }
 
     private final String[] GNOSIA_CHARACTERS = {
@@ -50,6 +51,16 @@ public class GameController {
     private SessionIdentityService.Actor requireRoomMembership(SimpMessageHeaderAccessor headerAccessor, String roomCode, Room room) {
         String sessionId = headerAccessor != null ? headerAccessor.getSessionId() : null;
         return identityService.requireRoomMembership(sessionId, room);
+    }
+
+    private String sessionIdOf(SimpMessageHeaderAccessor headerAccessor) {
+        return headerAccessor != null ? headerAccessor.getSessionId() : null;
+    }
+
+    /** Rate gate for game actions; returns false (and drops) when the flood guard trips. */
+    private boolean rateLimitsAllow(SessionIdentityService.Actor actor, String roomCode,
+            SimpMessageHeaderAccessor headerAccessor) {
+        return rateLimitService.allowGameAction(sessionIdOf(headerAccessor), actor.player().getId(), roomCode);
     }
 
     private void reject(SessionIdentityService.Actor actor, String action, String reason) {
@@ -116,6 +127,11 @@ public class GameController {
         }
 
         String sessionId = headerAccessor != null ? headerAccessor.getSessionId() : null;
+
+        if (!rateLimitService.allowRoomCreation(sessionId)) {
+            log.warn("[ROOM_CREATE] rate limit hit for session {}", sessionId);
+            return;
+        }
 
         Room room = roomManager.createRoom(code, request.getParticipants(), request.getPin());
         String finalRoomCode = room.getRoomCode();
@@ -185,6 +201,10 @@ public class GameController {
         }
 
         String sessionId = headerAccessor != null ? headerAccessor.getSessionId() : null;
+        if (!rateLimitService.allowJoin(sessionId)) {
+            log.warn("[JOIN] {} rate limit hit for session {}", normalizedCode, sessionId);
+            return;
+        }
         SessionIdentityService.ClaimResult claim = identityService.claim(sessionId, playerId, channelKey, normalizedCode);
         if (claim != SessionIdentityService.ClaimResult.OK) {
             roomError(channelKey, messageForClaim(claim));
@@ -230,6 +250,10 @@ public class GameController {
         Player starter = resolveOrReject(actor,
                 () -> gameActionAuthorizationService.requireCanStart(room, actor.player()));
         if (starter == null) return;
+        if (!rateLimitsAllow(actor, roomCode, headerAccessor)) {
+            log.warn("[START] {} rate limited", starter.getId());
+            return;
+        }
 
         gameService.transitionPhase(room);
     }
@@ -247,9 +271,17 @@ public class GameController {
         Player target = resolveOrReject(actor,
                 () -> gameActionAuthorizationService.requireCanVote(room, voter, payload.get("targetId")));
         if (target == null) return;
+        if (!rateLimitsAllow(actor, roomCode, headerAccessor)) {
+            log.warn("[VOTE] {} rate limited", voter.getId());
+            return;
+        }
 
-        room.getGameState().getCurrentVotes().put(voter.getId(), target.getId());
-        room.getGameState().getPlayerActionDone().put(voter.getId(), "VOTED");
+        // The vote handler runs on one thread per inbound connection, so concurrent
+        // ballots must be recorded atomically — the backing map is not thread-safe.
+        synchronized (room.getGameState()) {
+            room.getGameState().getCurrentVotes().put(voter.getId(), target.getId());
+            room.getGameState().getPlayerActionDone().put(voter.getId(), "VOTED");
+        }
         log.info("[VOTE] {} voted for {}", voter.getName(), target.getName());
         gameService.broadcastState(room);
     }
@@ -267,6 +299,10 @@ public class GameController {
         Player target = resolveOrReject(actor,
                 () -> gameActionAuthorizationService.requireCanScan(room, scanner, payload.get("targetId")));
         if (target == null) return;
+        if (!rateLimitsAllow(actor, roomCode, headerAccessor)) {
+            log.warn("[SCAN] {} rate limited", scanner.getId());
+            return;
+        }
 
         log.info("[SCAN] Scanner={}, Target={}", scanner.getName(), target.getName());
         String result = target.getRole() == Role.GNOSIA ? "GNOSIA" : "HUMAN";
@@ -290,6 +326,10 @@ public class GameController {
         Player target = resolveOrReject(actor,
                 () -> gameActionAuthorizationService.requireCanDoctorCheck(room, doctor, payload.get("targetId")));
         if (target == null) return;
+        if (!rateLimitsAllow(actor, roomCode, headerAccessor)) {
+            log.warn("[DOCTOR_CHECK] {} rate limited", doctor.getId());
+            return;
+        }
 
         log.info("[DOCTOR] Doctor={}, Target={}, TargetCryoslept={}", doctor.getName(), target.getName(), target.isCryoslept());
         String result = target.getRole() == Role.GNOSIA ? "GNOSIA" : "HUMAN";
@@ -313,6 +353,10 @@ public class GameController {
         Player target = resolveOrReject(actor,
                 () -> gameActionAuthorizationService.requireCanProtect(room, ga, payload.get("targetId")));
         if (target == null) return;
+        if (!rateLimitsAllow(actor, roomCode, headerAccessor)) {
+            log.warn("[PROTECT] {} rate limited", ga.getId());
+            return;
+        }
 
         log.info("[PROTECT] {} shielded: {}", ga.getName(), target.getName());
         room.getGameState().setProtectedPlayerId(target.getId());
@@ -333,6 +377,10 @@ public class GameController {
         Player target = resolveOrReject(actor,
                 () -> gameActionAuthorizationService.requireCanKill(room, gnosia, payload.get("targetId")));
         if (target == null) return;
+        if (!rateLimitsAllow(actor, roomCode, headerAccessor)) {
+            log.warn("[KILL] {} rate limited", gnosia.getId());
+            return;
+        }
         String targetId = target.getId();
 
         GameState state = room.getGameState();
@@ -383,14 +431,14 @@ public class GameController {
         String sessionId = headerAccessor != null ? headerAccessor.getSessionId() : null;
         if (sessionId == null) return;
 
-        // Prevent signaling spam from a single session.
-        if (!signalingRateLimiter.allow(sessionId)) {
-            log.warn("[SIGNAL] rate limit hit for session {}", sessionId);
-            return;
-        }
-
         SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         if (actor == null) return;
+
+        // Prevent signaling spam from a single session/player/IP.
+        if (!rateLimitService.allowSignal(sessionId, actor.player().getId())) {
+            log.warn("[SIGNAL] rate limit hit for player {}", actor.player().getId());
+            return;
+        }
 
         Player sender = actor.player();
         if (!sender.isAlive() || sender.isCryoslept()) return;

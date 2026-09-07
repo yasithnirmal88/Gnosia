@@ -1,6 +1,8 @@
 package com.gonosia.game.config;
 
+import com.gonosia.game.security.ClientIpHandshakeInterceptor;
 import com.gonosia.game.security.IdentityChannelInterceptor;
+import com.gonosia.game.security.RateLimitService;
 import com.gonosia.game.security.SessionIdentityService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -18,14 +20,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   private String allowedOrigins;
 
   private final SessionIdentityService identityService;
+  private final RateLimitService rateLimitService;
 
-  public WebSocketConfig(SessionIdentityService identityService) {
+  public WebSocketConfig(SessionIdentityService identityService, RateLimitService rateLimitService) {
     this.identityService = identityService;
+    this.rateLimitService = rateLimitService;
   }
 
   @Override
   public void configureClientInboundChannel(ChannelRegistration registration) {
-    registration.interceptors(new IdentityChannelInterceptor(identityService));
+    registration.interceptors(new IdentityChannelInterceptor(identityService, rateLimitService));
   }
 
   @Override
@@ -39,8 +43,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   public void registerStompEndpoints(StompEndpointRegistry registry) {
     registry.addEndpoint("/game-ws")
             .setAllowedOriginPatterns(allowedOrigins.split(","))
+            .addInterceptors(new ClientIpHandshakeInterceptor())
             .withSockJS();
     registry.addEndpoint("/game-ws-raw")
-            .setAllowedOriginPatterns(allowedOrigins.split(","));
+            .setAllowedOriginPatterns(allowedOrigins.split(","))
+            .addInterceptors(new ClientIpHandshakeInterceptor());
   }
 }

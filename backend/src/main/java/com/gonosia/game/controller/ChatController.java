@@ -1,6 +1,7 @@
 package com.gonosia.game.controller;
 
 import com.gonosia.game.model.*;
+import com.gonosia.game.security.RateLimitService;
 import com.gonosia.game.security.SessionIdentityService;
 import com.gonosia.game.service.RoomManager;
 import org.slf4j.Logger;
@@ -23,17 +24,23 @@ public class ChatController {
     private final SimpMessagingTemplate messagingTemplate;
     private final RoomManager roomManager;
     private final SessionIdentityService identityService;
+    private final RateLimitService rateLimitService;
 
     public ChatController(SimpMessagingTemplate messagingTemplate, RoomManager roomManager,
-            SessionIdentityService identityService) {
+            SessionIdentityService identityService, RateLimitService rateLimitService) {
         this.messagingTemplate = messagingTemplate;
         this.roomManager = roomManager;
         this.identityService = identityService;
+        this.rateLimitService = rateLimitService;
     }
 
     private SessionIdentityService.Actor requireRoomMembership(SimpMessageHeaderAccessor headerAccessor, String roomCode, Room room) {
         String sessionId = headerAccessor != null ? headerAccessor.getSessionId() : null;
         return identityService.requireRoomMembership(sessionId, room);
+    }
+
+    private String sessionIdOf(SimpMessageHeaderAccessor headerAccessor) {
+        return headerAccessor != null ? headerAccessor.getSessionId() : null;
     }
 
     // ─── Shared validation ──────────────────────────────────────────────────
@@ -83,6 +90,11 @@ public class ChatController {
         Player sender = requireLiveSender(room, actor, "CHAT");
         if (sender == null) return;
 
+        if (!rateLimitService.allowChat(sessionIdOf(headerAccessor), sender.getId(), roomCode)) {
+            log.warn("[CHAT] {} rejected: rate limited", sender.getId());
+            return;
+        }
+
         String content = message != null ? message.getContent() : null;
         if (isOversized(content)) {
             log.warn("[CHAT] {} rejected: oversized/empty message", sender.getId());
@@ -117,6 +129,11 @@ public class ChatController {
 
         Player sender = requireLiveSender(room, actor, "DM");
         if (sender == null) return;
+
+        if (!rateLimitService.allowDm(sessionIdOf(headerAccessor), sender.getId(), roomCode)) {
+            log.warn("[DM] {} rejected: rate limited", sender.getId());
+            return;
+        }
 
         String content = payload != null ? payload.get("content") : null;
         if (isOversized(content)) {
@@ -175,6 +192,11 @@ public class ChatController {
 
         if (sender.getRole() != Role.GNOSIA) {
             log.warn("[GNOSIA-CHAT] Unauthorized attempt by player {}", sender.getId());
+            return;
+        }
+
+        if (!rateLimitService.allowGnosiaChat(sessionIdOf(headerAccessor), sender.getId(), roomCode)) {
+            log.warn("[GNOSIA-CHAT] {} rejected: rate limited", sender.getId());
             return;
         }
 

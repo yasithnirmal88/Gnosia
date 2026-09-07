@@ -6,7 +6,9 @@ import com.gonosia.game.service.RoomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.util.Map;
@@ -19,19 +21,46 @@ public class SessionIdentityService {
 
     public static final String ACTOR_HEADER = "gonosiaActorId";
 
+    /** WebSocket session attribute carrying the remote client address (set by the handshake interceptor). */
+    public static final String CLIENT_IP_ATTRIBUTE = "gonosiaClientIp";
+
     private static final Pattern CHANNEL_KEY_PATTERN = Pattern.compile("[A-Za-z0-9_-]{8,128}");
     private static final Pattern PLAYER_ID_PATTERN = Pattern.compile("[A-Za-z0-9_.-]{1,64}");
     private static final Pattern ROOM_CODE_PATTERN = Pattern.compile("[A-Z0-9]{4,6}");
     private static final Pattern PIN_PATTERN = Pattern.compile("[0-9]{4,6}");
 
     private final RoomManager roomManager;
-    private final SignalingRateLimiter signalingRateLimiter;
     private final Map<String, PlayerIdentity> bySession = new ConcurrentHashMap<>();
     private final Map<String, PlayerIdentity> byPlayer = new ConcurrentHashMap<>();
+    private final Map<String, String> sessionIps = new ConcurrentHashMap<>();
 
-    public SessionIdentityService(RoomManager roomManager, SignalingRateLimiter signalingRateLimiter) {
+    public SessionIdentityService(RoomManager roomManager) {
         this.roomManager = roomManager;
-        this.signalingRateLimiter = signalingRateLimiter;
+    }
+
+    /** Record the remote client IP for a session, captured at handshake time. */
+    public void registerIp(String sessionId, String ip) {
+        if (sessionId != null && ip != null) {
+            sessionIps.put(sessionId, ip);
+        }
+    }
+
+    /** @return the remote IP recorded for a session, or null if unknown. */
+    public String ipForSession(String sessionId) {
+        return sessionId == null ? null : sessionIps.get(sessionId);
+    }
+
+    @EventListener
+    public void onSessionConnect(SessionConnectEvent event) {
+        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+        String sessionId = accessor.getSessionId();
+        Object attributes = accessor.getSessionAttributes();
+        if (sessionId != null && attributes instanceof Map<?, ?> sessionAttributes) {
+            Object ip = sessionAttributes.get(CLIENT_IP_ATTRIBUTE);
+            if (ip instanceof String) {
+                registerIp(sessionId, (String) ip);
+            }
+        }
     }
 
     public record Actor(Player player, String channelKey) {
@@ -140,8 +169,8 @@ public class SessionIdentityService {
 
     public synchronized void disconnect(String sessionId) {
         PlayerIdentity identity = bySession.remove(sessionId);
+        sessionIps.remove(sessionId);
         if (identity == null) return;
-        signalingRateLimiter.clear(sessionId);
         identity.setConnected(false);
         identity.setSessionId(null);
         log.info("[AUTH] Session {} disconnected, identity {} released", sessionId, identity.playerId());
