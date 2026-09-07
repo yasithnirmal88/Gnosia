@@ -21,6 +21,8 @@ public class SessionIdentityService {
 
     private static final Pattern CHANNEL_KEY_PATTERN = Pattern.compile("[A-Za-z0-9_-]{8,128}");
     private static final Pattern PLAYER_ID_PATTERN = Pattern.compile("[A-Za-z0-9_.-]{1,64}");
+    private static final Pattern ROOM_CODE_PATTERN = Pattern.compile("[A-Z0-9]{4,6}");
+    private static final Pattern PIN_PATTERN = Pattern.compile("[0-9]{4,6}");
 
     private final RoomManager roomManager;
     private final Map<String, PlayerIdentity> bySession = new ConcurrentHashMap<>();
@@ -37,7 +39,8 @@ public class SessionIdentityService {
     }
 
     public enum ClaimResult {
-        OK, INVALID_PLAYER_ID, INVALID_KEY, SESSION_ALREADY_BOUND, WRONG_KEY, ALREADY_ACTIVE_ELSEWHERE
+        OK, INVALID_PLAYER_ID, INVALID_KEY, SESSION_ALREADY_BOUND, WRONG_KEY, ALREADY_ACTIVE_ELSEWHERE,
+        ALREADY_BOUND_TO_ROOM
     }
 
     public static boolean isValidChannelKey(String key) {
@@ -46,6 +49,14 @@ public class SessionIdentityService {
 
     public static boolean isValidPlayerId(String id) {
         return id != null && PLAYER_ID_PATTERN.matcher(id).matches();
+    }
+
+    public static boolean isValidRoomCode(String code) {
+        return code != null && ROOM_CODE_PATTERN.matcher(code).matches();
+    }
+
+    public static boolean isValidPin(String pin) {
+        return pin != null && PIN_PATTERN.matcher(pin).matches();
     }
 
     public static class PlayerIdentity {
@@ -85,6 +96,9 @@ public class SessionIdentityService {
         PlayerIdentity existingForPlayer = byPlayer.get(playerId);
         if (existingForPlayer != null) {
             if (!existingForPlayer.channelKey().equals(presentedKey)) return ClaimResult.WRONG_KEY;
+            if (existingForPlayer.roomCode() != null && !existingForPlayer.roomCode().equals(roomCode)) {
+                return ClaimResult.ALREADY_BOUND_TO_ROOM;
+            }
             if (existingForPlayer.connected()) {
                 if (!existingForPlayer.sessionId().equals(sessionId)) return ClaimResult.ALREADY_ACTIVE_ELSEWHERE;
                 return ClaimResult.OK;
@@ -107,7 +121,7 @@ public class SessionIdentityService {
         return identity != null ? identity.playerId() : null;
     }
 
-    public Actor requireActor(String sessionId, Room room) {
+    public Actor requireRoomMembership(String sessionId, Room room) {
         if (sessionId == null || room == null) return null;
         PlayerIdentity identity = bySession.get(sessionId);
         if (identity == null || !identity.connected()) return null;

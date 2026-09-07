@@ -21,7 +21,8 @@ const App = () => {
     const [inMeeting, setInMeeting] = useState(false);
     const [localMuted, setLocalMuted] = useState(false);
     const [globalVolume, setGlobalVolume] = useState(1);
-    const [joinPin, setJoinPin] = useState(''); // Keep variable just to not break destructuring if any, or remove
+    const [joinPin, setJoinPin] = useState('');
+    const [createdPin, setCreatedPin] = useState('');
     const [lobbyMode, setLobbyMode] = useState('MAIN'); // MAIN, JOIN, CREATE
 
     const [pendingAction, setPendingAction] = useState(null);
@@ -61,7 +62,7 @@ const App = () => {
             if (pendingAction.type === 'JOIN') {
                 // Subscribe happens in onConnect auto-subscribe — skip duplicate
             } else if (pendingAction.type === 'CREATE') {
-                createRoom(pendingAction.code, pendingAction.participants, "");
+                createRoom(pendingAction.code, pendingAction.participants, pendingAction.pin);
                 setIsJoined(true);
             }
             setPendingAction(null);
@@ -80,13 +81,14 @@ const App = () => {
         if (roomCodeInput) {
             setJoinError(null);
             setPendingAction({ type: 'JOIN', code: roomCodeInput, pin: joinPin });
-            connect();
+            connect(joinPin);
         }
     };
 
-    const handleCreateRoom = ({ roomCode: generatedCode, participants }) => {
-        setPendingAction({ type: 'CREATE', code: generatedCode, participants });
-        connect();
+    const handleCreateRoom = ({ roomCode: generatedCode, participants, pin }) => {
+        setPendingAction({ type: 'CREATE', code: generatedCode, participants, pin });
+        setCreatedPin(pin);
+        connect(pin);
     };
 
     const fillWithBots = () => {
@@ -102,7 +104,7 @@ const App = () => {
             client.onConnect = () => {
                 client.publish({
                     destination: `/app/room/${room.roomCode}/join`,
-                    body: JSON.stringify({ id: botId, channelKey: botKey, pin: '' }),
+                    body: JSON.stringify({ id: botId, channelKey: botKey, pin: createdPin || '' }),
                 });
             };
             client.activate();
@@ -148,7 +150,7 @@ const App = () => {
                             </header>
                             <main className="lobby-card glass-panel">
                                 <div className="lobby-join-form">
-                                    <h3>Game PIN (6-char code)</h3>
+                                    <h3>ROOM NUMBER</h3>
                                     <form onSubmit={handleJoin}>
                                         <input
                                             type="text"
@@ -159,6 +161,17 @@ const App = () => {
                                             maxLength={6}
                                             required
                                             autoFocus
+                                        />
+                                        <h3 style={{ marginTop: 24 }}>GAME PIN</h3>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            placeholder="000000"
+                                            value={joinPin}
+                                            onChange={(e) => setJoinPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                                            className="pin-input"
+                                            maxLength={6}
+                                            required
                                         />
                                         <button type="submit" className="button-primary play-btn" style={{ marginTop: 32 }}>Enter Ship</button>
                                         

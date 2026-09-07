@@ -39,9 +39,9 @@ public class GameController {
     };
     private final Random random = new Random();
 
-    private SessionIdentityService.Actor requireActor(SimpMessageHeaderAccessor headerAccessor, String roomCode, Room room) {
+    private SessionIdentityService.Actor requireRoomMembership(SimpMessageHeaderAccessor headerAccessor, String roomCode, Room room) {
         String sessionId = headerAccessor != null ? headerAccessor.getSessionId() : null;
-        return identityService.requireActor(sessionId, room);
+        return identityService.requireRoomMembership(sessionId, room);
     }
 
     private void reject(SessionIdentityService.Actor actor, String action, String reason) {
@@ -63,6 +63,7 @@ public class GameController {
             case SESSION_ALREADY_BOUND: return "This connection is already bound to another identity";
             case WRONG_KEY: return "Identity key mismatch";
             case ALREADY_ACTIVE_ELSEWHERE: return "This identity is already active in another session";
+            case ALREADY_BOUND_TO_ROOM: return "This identity already belongs to another room";
             default: return "Join failed";
         }
     }
@@ -81,23 +82,31 @@ public class GameController {
             return;
         }
 
-        String code = request.getRoomCode();
-        if (code != null && !code.isBlank() && roomManager.getRoom(code) != null) {
+        String code = request.getRoomCode() != null ? request.getRoomCode().trim().toUpperCase() : null;
+        if (code != null && !SessionIdentityService.isValidRoomCode(code)) {
+            roomError(channelKey, "Invalid room code");
+            return;
+        }
+        if (code != null && roomManager.getRoom(code) != null) {
             roomError(channelKey, "Room code already exists");
             return;
         }
-        String finalCode = (code != null && !code.isBlank())
-                ? code
-                : UUID.randomUUID().toString().substring(0, 6).toUpperCase();
 
-        String sessionId = headerAccessor != null ? headerAccessor.getSessionId() : null;
-        SessionIdentityService.ClaimResult claim = identityService.claim(sessionId, playerId, channelKey, finalCode);
-        if (claim != SessionIdentityService.ClaimResult.OK) {
-            roomError(channelKey, messageForClaim(claim));
+        if (!SessionIdentityService.isValidPin(request.getPin())) {
+            roomError(channelKey, "Invalid PIN");
             return;
         }
 
-        Room room = roomManager.createRoom(finalCode, request.getParticipants(), request.getPin());
+        String sessionId = headerAccessor != null ? headerAccessor.getSessionId() : null;
+
+        Room room = roomManager.createRoom(code, request.getParticipants(), request.getPin());
+        String finalRoomCode = room.getRoomCode();
+        SessionIdentityService.ClaimResult claim = identityService.claim(sessionId, playerId, channelKey, finalRoomCode);
+        if (claim != SessionIdentityService.ClaimResult.OK) {
+            roomManager.removeRoom(finalRoomCode);
+            roomError(channelKey, messageForClaim(claim));
+            return;
+        }
         Player player = new Player();
         player.setId(playerId);
         String randomName = GNOSIA_CHARACTERS[random.nextInt(GNOSIA_CHARACTERS.length)];
@@ -128,20 +137,37 @@ public class GameController {
             return;
         }
 
-        Room room = roomManager.getRoom(roomCode);
+        String normalizedCode = roomCode == null ? null : roomCode.trim().toUpperCase();
+        if (normalizedCode != null && !SessionIdentityService.isValidRoomCode(normalizedCode)) {
+            roomError(channelKey, "Vessel not found — check your code");
+            return;
+        }
+
+        Room room = roomManager.getRoom(normalizedCode);
         if (room == null) {
             roomError(channelKey, "Vessel not found — check your code");
             return;
         }
 
+        String pin = joinRequest.getPin();
+        if (!SessionIdentityService.isValidPin(pin) || room.getPin() == null || !room.getPin().equals(pin)) {
+            roomError(channelKey, "Incorrect PIN");
+            return;
+        }
+
         Player existing = room.getPlayer(playerId);
+        if (existing == null && room.getGameState().getPhase() != Phase.LOBBY) {
+            roomError(channelKey, "Game already started");
+            return;
+        }
+
         if (existing == null && room.getPlayers().size() >= room.getConfig().getMaxPlayers()) {
             roomError(channelKey, "Vessel at max capacity");
             return;
         }
 
         String sessionId = headerAccessor != null ? headerAccessor.getSessionId() : null;
-        SessionIdentityService.ClaimResult claim = identityService.claim(sessionId, playerId, channelKey, roomCode);
+        SessionIdentityService.ClaimResult claim = identityService.claim(sessionId, playerId, channelKey, normalizedCode);
         if (claim != SessionIdentityService.ClaimResult.OK) {
             roomError(channelKey, messageForClaim(claim));
             return;
@@ -149,7 +175,7 @@ public class GameController {
 
         if (existing != null) {
             existing.setConnected(true);
-            log.info("Player ID " + existing.getId() + " joined/reconnected to " + roomCode);
+            log.info("Player ID " + existing.getId() + " joined/reconnected to " + normalizedCode);
         } else {
             List<String> availableNames = new java.util.ArrayList<>(java.util.Arrays.asList(GNOSIA_CHARACTERS));
             room.getPlayers().forEach(p -> availableNames.remove(p.getName()));
@@ -166,11 +192,11 @@ public class GameController {
             player.setConnected(true);
             player.setAlive(true);
             room.addPlayer(player);
-            log.info("Assigned identity " + randomName + " joined " + roomCode);
+            log.info("Assigned identity " + randomName + " joined " + normalizedCode);
         }
 
         messagingTemplate.convertAndSend("/topic/private/" + channelKey,
-            Map.of("type", "JOIN_CONFIRMED", "roomCode", roomCode, "playerId", playerId));
+            Map.of("type", "JOIN_CONFIRMED", "roomCode", normalizedCode, "playerId", playerId));
 
         gameService.broadcastState(room);
     }
@@ -180,7 +206,7 @@ public class GameController {
         Room room = roomManager.getRoom(roomCode);
         if (room == null) return;
 
-        SessionIdentityService.Actor actor = requireActor(headerAccessor, roomCode, room);
+        SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         if (actor == null) return;
 
         if (room.getGameState().getPhase() == Phase.LOBBY) {
@@ -196,7 +222,7 @@ public class GameController {
         Room room = roomManager.getRoom(roomCode);
         if (room == null) return;
 
-        SessionIdentityService.Actor actor = requireActor(headerAccessor, roomCode, room);
+        SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         Player voter = actor != null ? actor.player() : null;
         if (voter == null) return;
 
@@ -228,7 +254,7 @@ public class GameController {
         Room room = roomManager.getRoom(roomCode);
         if (room == null) return;
 
-        SessionIdentityService.Actor actor = requireActor(headerAccessor, roomCode, room);
+        SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         Player scanner = actor != null ? actor.player() : null;
         if (scanner == null) return;
 
@@ -273,7 +299,7 @@ public class GameController {
         Room room = roomManager.getRoom(roomCode);
         if (room == null) return;
 
-        SessionIdentityService.Actor actor = requireActor(headerAccessor, roomCode, room);
+        SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         Player doctor = actor != null ? actor.player() : null;
         if (doctor == null) return;
 
@@ -325,7 +351,7 @@ public class GameController {
         Room room = roomManager.getRoom(roomCode);
         if (room == null) return;
 
-        SessionIdentityService.Actor actor = requireActor(headerAccessor, roomCode, room);
+        SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         Player ga = actor != null ? actor.player() : null;
         if (ga == null) return;
 
@@ -367,7 +393,7 @@ public class GameController {
         Room room = roomManager.getRoom(roomCode);
         if (room == null) return;
 
-        SessionIdentityService.Actor actor = requireActor(headerAccessor, roomCode, room);
+        SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         Player gnosia = actor != null ? actor.player() : null;
         if (gnosia == null) return;
 
@@ -443,7 +469,7 @@ public class GameController {
         Room room = roomManager.getRoom(roomCode);
         if (room == null) return;
 
-        SessionIdentityService.Actor actor = requireActor(headerAccessor, roomCode, room);
+        SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         if (actor == null) return;
 
         String targetId = (String) payload.get("targetId");

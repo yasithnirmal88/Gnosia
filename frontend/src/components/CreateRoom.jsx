@@ -6,12 +6,13 @@ export default function CreateRoom({ onSave, onBack }) {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     return Array.from({length:6}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
   });
+  const [pin, setPin] = useState(() => String(Math.floor(1000 + Math.random() * 9000)));
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
     setSaved(true);
     setTimeout(() => {
-      onSave && onSave({ roomCode, participants });
+      onSave && onSave({ roomCode, participants, pin });
     }, 800);
   };
 
@@ -190,6 +191,24 @@ export default function CreateRoom({ onSave, onBack }) {
                   <div key={i} className={`p-dot ${i < participants ? "active" : "inactive"}`} />
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Game PIN */}
+        <div style={{ marginBottom: 32 }}>
+          <div className="field-label">GAME PIN (4-6 DIGITS)</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={pin}
+              onChange={e => setPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+              className="pin-input"
+              maxLength={6}
+            />
+            <div style={{ fontSize: 8, color: "rgba(0,255,245,0.3)", letterSpacing: 1 }}>
+              SHARE WITH<br/>CREW TO JOIN
             </div>
           </div>
         </div>

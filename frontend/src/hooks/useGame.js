@@ -39,6 +39,7 @@ export const useGame = (initialRoomCode) => {
   });
 
   const stompClient = useRef(null);
+  const pinRef = useRef('');
 
   // WebRTC — use refs to avoid stale closure issues in callbacks
   const peers = useRef({});
@@ -53,7 +54,8 @@ export const useGame = (initialRoomCode) => {
 
   // ─── WebSocket Connection ────────────────────────────────────────────────────
 
-  const connect = () => {
+  const connect = (pin) => {
+    if (pin !== undefined) pinRef.current = pin;
     // Deactivate any existing connection to avoid zombie STOMP clients
     if (stompClient.current?.active) {
       stompClient.current.deactivate();
@@ -146,6 +148,7 @@ export const useGame = (initialRoomCode) => {
       console.warn('[Gnosia] Cannot subscribe, STOMP not connected');
       return;
     }
+    const effectivePin = pin !== undefined ? pin : pinRef.current;
 
     // Basic room state (players, phase, etc)
     client.subscribe(`/topic/room/${code}`, (response) => {
@@ -180,7 +183,7 @@ export const useGame = (initialRoomCode) => {
     // Join with ID and optional PIN
     client.publish({
       destination: `/app/room/${code}/join`,
-      body: JSON.stringify({ id: playerId, channelKey: identityKey, pin: pin }),
+      body: JSON.stringify({ id: playerId, channelKey: identityKey, pin: effectivePin }),
     });
   };
 

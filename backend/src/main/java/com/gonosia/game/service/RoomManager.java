@@ -4,20 +4,29 @@ import com.gonosia.game.model.GameState;
 import com.gonosia.game.model.Phase;
 import com.gonosia.game.model.GameConfig;
 import com.gonosia.game.model.Room;
+import com.gonosia.game.security.SessionIdentityService;
 import org.springframework.stereotype.Service;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.UUID;
 import java.util.ArrayList;
+import java.security.SecureRandom;
 
 @Service
 public class RoomManager {
+    private static final String CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final int CODE_LENGTH = 6;
+
     private final Map<String, Room> activeRooms = new ConcurrentHashMap<>();
+    private final SecureRandom secureRandom = new SecureRandom();
 
     public Room createRoom(String roomCode, int maxPlayers, String pin) {
+        String code = normalizeCode(roomCode);
+        if (code == null) {
+            code = generateCode();
+        }
         Room room = new Room();
-        room.setRoomCode(roomCode != null ? roomCode : UUID.randomUUID().toString().substring(0, 6).toUpperCase());
+        room.setRoomCode(code);
         room.setPin(pin);
         room.setPlayers(new ArrayList<>());
         
@@ -39,6 +48,24 @@ public class RoomManager {
 
     public Room getRoom(String roomCode) {
         return activeRooms.get(roomCode);
+    }
+
+    private String normalizeCode(String roomCode) {
+        if (roomCode == null) return null;
+        String trimmed = roomCode.trim().toUpperCase();
+        return SessionIdentityService.isValidRoomCode(trimmed) ? trimmed : null;
+    }
+
+    private String generateCode() {
+        String code;
+        do {
+            StringBuilder sb = new StringBuilder(CODE_LENGTH);
+            for (int i = 0; i < CODE_LENGTH; i++) {
+                sb.append(CODE_ALPHABET.charAt(secureRandom.nextInt(CODE_ALPHABET.length())));
+            }
+            code = sb.toString();
+        } while (activeRooms.containsKey(code));
+        return code;
     }
 
     public void removeRoom(String roomCode) {

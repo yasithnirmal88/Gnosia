@@ -6,6 +6,7 @@ global.XMLHttpRequest = require('xhr2');
 
 const BACKEND_URL = 'http://localhost:8080/game-ws';
 const ROOM_CODE = 'TEST12';
+const ROOM_PIN = '4242';
 const PLAYER_NAMES = ['Setsu', 'Jina', 'SQ', 'Raqio', 'Stella'];
 
 const players = {};
@@ -69,7 +70,7 @@ function createPlayer(index) {
                         if (pData && pData.client) {
                             pData.client.publish({
                                 destination: `/app/room/${info.roomCode}/join`,
-                                body: JSON.stringify({ id: pData.id, channelKey: playerKeys[pName], pin: '' }),
+                                body: JSON.stringify({ id: pData.id, channelKey: playerKeys[pName], pin: ROOM_PIN }),
                             });
                         }
                     }
@@ -186,7 +187,7 @@ function createPlayer(index) {
             setTimeout(() => {
                 client.publish({
                     destination: '/app/room/create',
-                    body: JSON.stringify({ playerId: id, channelKey: key, roomCode: ROOM_CODE, participants: 5, pin: '' }),
+                    body: JSON.stringify({ playerId: id, channelKey: key, roomCode: ROOM_CODE, participants: 5, pin: ROOM_PIN }),
                 });
             }, 1000);
         } else {

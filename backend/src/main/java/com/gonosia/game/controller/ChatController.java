@@ -28,9 +28,9 @@ public class ChatController {
         this.identityService = identityService;
     }
 
-    private SessionIdentityService.Actor requireActor(SimpMessageHeaderAccessor headerAccessor, String roomCode, Room room) {
+    private SessionIdentityService.Actor requireRoomMembership(SimpMessageHeaderAccessor headerAccessor, String roomCode, Room room) {
         String sessionId = headerAccessor != null ? headerAccessor.getSessionId() : null;
-        return identityService.requireActor(sessionId, room);
+        return identityService.requireRoomMembership(sessionId, room);
     }
 
     @MessageMapping("/room/{roomCode}/chat")
@@ -39,7 +39,7 @@ public class ChatController {
         Room room = roomManager.getRoom(roomCode);
         if (room == null) return;
 
-        SessionIdentityService.Actor actor = requireActor(headerAccessor, roomCode, room);
+        SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         if (actor == null) return;
 
         Player sender = actor.player();
@@ -60,7 +60,7 @@ public class ChatController {
         Room room = roomManager.getRoom(roomCode);
         if (room == null) return;
 
-        SessionIdentityService.Actor actor = requireActor(headerAccessor, roomCode, room);
+        SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         if (actor == null) return;
 
         Player sender = actor.player();
@@ -94,7 +94,7 @@ public class ChatController {
             return;
         }
 
-        SessionIdentityService.Actor actor = requireActor(headerAccessor, roomCode, room);
+        SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         if (actor == null) return;
 
         Player sender = actor.player();

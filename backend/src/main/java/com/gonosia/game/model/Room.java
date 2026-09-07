@@ -1,5 +1,6 @@
 package com.gonosia.game.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -61,6 +62,7 @@ public class Room {
     public List<Map<String, String>> getVotingHistory() { return votingHistory; }
     public void setVotingHistory(List<Map<String, String>> votingHistory) { this.votingHistory = votingHistory; }
 
+    @JsonIgnore
     public String getPin() { return pin; }
     public void setPin(String pin) { this.pin = pin; }
 
