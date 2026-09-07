@@ -7,8 +7,8 @@ class Vector2D {
     this.y = y
   }
 
-  static random(min, max) {
-    return min + Math.random() * (max - min)
+  static random(min, max, rand = Math.random) {
+    return min + rand() * (max - min)
   }
 }
 
@@ -42,28 +42,24 @@ class AnimationController {
     this.stars = []
     this.timeline = gsap.timeline({ repeat: -1 })
 
-    this.setupRandomGenerator()
-    this.createStars()
+    this.createStars(1234)
     this.setupTimeline()
   }
 
-  setupRandomGenerator() {
-    const originalRandom = Math.random
-    const customRandom = () => {
-      let seed = 1234
-      return () => {
-        seed = (seed * 9301 + 49297) % 233280
-        return seed / 233280
-      }
+  /** Deterministic PRNG so the starfield is identical on every mount. */
+  seededRandom(seed) {
+    let s = seed
+    return () => {
+      s = (s * 9301 + 49297) % 233280
+      return s / 233280
     }
-    Math.random = customRandom()
-    this.createStars()
-    Math.random = originalRandom
   }
 
-  createStars() {
+  createStars(seed) {
+    // Seeding is scoped to this batch only — global Math.random is never touched.
+    const rand = typeof seed === 'number' ? this.seededRandom(seed) : Math.random
     for (let i = 0; i < this.numberOfStars; i++) {
-      this.stars.push(new Star(this.cameraZ, this.cameraTravelDistance))
+      this.stars.push(new Star(this.cameraZ, this.cameraTravelDistance, rand))
     }
   }
 
@@ -218,22 +214,22 @@ class AnimationController {
 }
 
 class Star {
-  constructor(cameraZ, cameraTravelDistance) {
-    this.angle = Math.random() * Math.PI * 2
-    this.distance = 30 * Math.random() + 15
-    this.rotationDirection = Math.random() > 0.5 ? 1 : -1
-    this.expansionRate = 1.2 + Math.random() * 0.8
-    this.finalScale = 0.7 + Math.random() * 0.6
+  constructor(cameraZ, cameraTravelDistance, rand = Math.random) {
+    this.angle = rand() * Math.PI * 2
+    this.distance = 30 * rand() + 15
+    this.rotationDirection = rand() > 0.5 ? 1 : -1
+    this.expansionRate = 1.2 + rand() * 0.8
+    this.finalScale = 0.7 + rand() * 0.6
 
     this.dx = this.distance * Math.cos(this.angle)
     this.dy = this.distance * Math.sin(this.angle)
 
-    this.spiralLocation = (1 - Math.pow(1 - Math.random(), 3.0)) / 1.3
-    this.z = Vector2D.random(0.5 * cameraZ, cameraTravelDistance + cameraZ)
+    this.spiralLocation = (1 - Math.pow(1 - rand(), 3.0)) / 1.3
+    this.z = Vector2D.random(0.5 * cameraZ, cameraTravelDistance + cameraZ, rand)
 
     const lerp = (start, end, t) => start * (1 - t) + end * t
     this.z = lerp(this.z, cameraTravelDistance / 2, 0.3 * this.spiralLocation)
-    this.strokeWeightFactor = Math.pow(Math.random(), 2.0)
+    this.strokeWeightFactor = Math.pow(rand(), 2.0)
   }
 
   render(p, controller) {
@@ -356,10 +352,10 @@ export function SpiralAnimation() {
   }, [dimensions])
 
   return (
-    <div className="relative w-full h-full">
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full"
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
       />
     </div>
   )

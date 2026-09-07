@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import './App.css';
@@ -12,7 +12,10 @@ import LandingPage from './components/LandingPage';
 import CreateRoom from './components/CreateRoom';
 import VotingResults from './components/VotingResults';
 import ActionPanel from './components/ActionPanel';
-import { NAME_MAP } from './constants';
+
+const MemoVoiceCommsOverlay = memo(VoiceCommsOverlay);
+const MemoVotingResults = memo(VotingResults);
+const MemoActionPanel = memo(ActionPanel);
 
 const App = () => {
     const [isJoined, setIsJoined] = useState(false);
@@ -33,8 +36,10 @@ const App = () => {
         privateInfo,
         scanResult,
         doctorResult,
+        timer,
         connect,
         connectToMedia,
+        streamReady,
         streams,
         sendMessage,
         vote,
@@ -76,20 +81,27 @@ const App = () => {
         }
     }, [room, isJoined]);
 
-    const handleJoin = (e) => {
+    const handleJoin = useCallback((e) => {
         if (e) e.preventDefault();
         if (roomCodeInput) {
             setJoinError(null);
             setPendingAction({ type: 'JOIN', code: roomCodeInput, pin: joinPin });
             connect(joinPin);
         }
-    };
+    }, [roomCodeInput, joinPin, connect, setJoinError]);
 
-    const handleCreateRoom = ({ roomCode: generatedCode, participants, pin }) => {
+    const handleCreateRoom = useCallback(({ roomCode: generatedCode, participants, pin }) => {
         setPendingAction({ type: 'CREATE', code: generatedCode, participants, pin });
         setCreatedPin(pin);
         connect(pin);
-    };
+    }, [connect]);
+
+    const handleAction = useCallback((id) => {
+        if (privateInfo?.role === 'ENGINEER') scan(id);
+        if (privateInfo?.role === 'DOCTOR') doctorCheck(id);
+        if (privateInfo?.role === 'GUARDIAN_ANGEL') protect(id);
+        if (privateInfo?.role === 'GNOSIA') kill(id);
+    }, [privateInfo?.role, scan, doctorCheck, protect, kill]);
 
     const fillWithBots = () => {
         if (!room) return;
@@ -252,7 +264,7 @@ const App = () => {
                 
                 <div className="timer-box">
                     {currentPhase === 'INTRO' ? 'LEVI COMMUNICATING...' : 
-                     `${Math.floor(room.gameState.remainingTimeSeconds / 60).toString().padStart(2, '0')}:${Math.floor(room.gameState.remainingTimeSeconds % 60).toString().padStart(2, '0')}`}
+                     `${Math.floor((timer.remainingTimeSeconds || room.gameState.remainingTimeSeconds || 0) / 60).toString().padStart(2, '0')}:${Math.floor((timer.remainingTimeSeconds || room.gameState.remainingTimeSeconds || 0) % 60).toString().padStart(2, '0')}`}
                 </div>
                 
                 {currentPhase === 'LOBBY' && room.config && room.players.length >= room.config.maxPlayers && (
@@ -293,7 +305,7 @@ const App = () => {
                 <main className="player-grid terminal-grid">
                     <AnimatePresence>
                         {(inMeeting || currentPhase === 'VOTING' || currentPhase === 'DISCUSSION' || currentPhase === 'WARP' || currentPhase === 'INTRO') && (
-                            <VoiceCommsOverlay 
+                            <MemoVoiceCommsOverlay 
                                 players={room.players} 
                                 streams={streams} 
                                 currentPhase={currentPhase}
@@ -308,6 +320,7 @@ const App = () => {
                                 onKill={kill}
                                 playerName={room.players.find(p => p.id === playerId)?.name}
                                 room={room}
+                                timer={timer}
                                 messages={messages}
                                 dmMessages={dmMessages}
                                 sendMessage={sendMessage}
@@ -321,7 +334,7 @@ const App = () => {
                     {/* Voting Results Layer */}
                     <AnimatePresence>
                         {(currentPhase === 'RESULT' || currentPhase === 'CRYOSLEEP') && (
-                            <VotingResults 
+                            <MemoVotingResults 
                                 players={room.players} 
                                 currentVotes={room.gameState.currentVotes} 
                                 phase={currentPhase}
@@ -334,7 +347,7 @@ const App = () => {
                     {/* Action Panel Layer (Engineer, Doctor, Guardian Angel, Gnosia) */}
                     <AnimatePresence>
                         {(currentPhase === 'ROLE_ACTIONS' || currentPhase === 'WARP') && (
-                            <ActionPanel 
+                            <MemoActionPanel 
                                 phase={currentPhase}
                                 role={privateInfo?.role}
                                 players={room.players}
@@ -342,12 +355,7 @@ const App = () => {
                                 actionResult={(privateInfo?.role === 'ENGINEER') ? scanResult?.result : ((privateInfo?.role === 'DOCTOR') ? doctorResult?.result : null)}
                                 privateInfo={privateInfo}
                                 myId={playerId}
-                                onAction={(id) => {
-                                    if (privateInfo?.role === 'ENGINEER') scan(id);
-                                    if (privateInfo?.role === 'DOCTOR') doctorCheck(id);
-                                    if (privateInfo?.role === 'GUARDIAN_ANGEL') protect(id);
-                                    if (privateInfo?.role === 'GNOSIA') kill(id);
-                                }}
+                                onAction={handleAction}
                             />
                         )}
                     </AnimatePresence>

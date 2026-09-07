@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import './CreateRoom.css';
 
 export default function CreateRoom({ onSave, onBack }) {
   const [participants, setParticipants] = useState(5);
@@ -8,10 +9,20 @@ export default function CreateRoom({ onSave, onBack }) {
   });
   const [pin, setPin] = useState(() => String(Math.floor(1000 + Math.random() * 9000)));
   const [saved, setSaved] = useState(false);
+  const saveTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleSave = () => {
     setSaved(true);
-    setTimeout(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
       onSave && onSave({ roomCode, participants, pin });
     }, 800);
   };
@@ -22,109 +33,6 @@ export default function CreateRoom({ onSave, onBack }) {
       flexDirection: "column", alignItems: "center", justifyContent: "center",
       fontFamily: "'Share Tech Mono', monospace", position: "relative", overflow: "hidden",
     }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
-        * { box-sizing: border-box; }
-        .scan-lines {
-          position: fixed; inset: 0; pointer-events: none; z-index: 0;
-          background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,255,65,0.025) 3px, rgba(0,255,65,0.025) 4px);
-        }
-        .room-panel {
-          background: rgba(5, 8, 20, 0.95);
-          border: 1px solid rgba(255,0,64,0.3);
-          padding: 48px 56px;
-          position: relative;
-          z-index: 2;
-          width: 100%;
-          max-width: 620px;
-          clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
-        }
-        .corner { position: absolute; width: 24px; height: 24px; }
-        .c-tl { top: -1px; left: -1px; border-top: 2px solid #ff0040; border-left: 2px solid #ff0040; }
-        .c-tr { top: -1px; right: -1px; border-top: 2px solid #ff0040; border-right: 2px solid #ff0040; }
-        .c-bl { bottom: -1px; left: -1px; border-bottom: 2px solid #ff0040; border-left: 2px solid #ff0040; }
-        .c-br { bottom: -1px; right: -1px; border-bottom: 2px solid #ff0040; border-right: 2px solid #ff0040; }
-        .field-label {
-          font-size: 9px; letter-spacing: 3px; color: rgba(0,255,245,0.5);
-          font-family: 'Orbitron', monospace; margin-bottom: 8px;
-          display: flex; align-items: center; gap: 8px;
-        }
-        .field-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,0,64,0.15); }
-        .room-code-display {
-          display: flex; align-items: center; gap: 10px;
-        }
-        .code-segment {
-          display: flex; gap: 6px;
-        }
-        .code-char {
-          width: 40px; height: 50px;
-          background: rgba(255,0,64,0.05);
-          border: 1px solid rgba(255,0,64,0.4);
-          display: flex; align-items: center; justify-content: center;
-          font-family: 'Orbitron', monospace; font-size: 22px; font-weight: 900;
-          color: #ff0040; letter-spacing: 0;
-          clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
-        }
-        .code-sep { color: rgba(255,255,255,0.2); font-size: 20px; align-self: center; }
-        .slider-wrap { position: relative; }
-        input[type=range] {
-          width: 100%; appearance: none; background: transparent; cursor: pointer; height: 24px;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-          height: 3px; background: rgba(255,0,64,0.2);
-          border-radius: 0;
-        }
-        input[type=range]::-webkit-slider-thumb {
-          appearance: none; width: 18px; height: 18px; margin-top: -7px;
-          background: #ff0040; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-        }
-        .participant-dots {
-          display: flex; gap: 4px; flex-wrap: wrap; margin-top: 10px;
-        }
-        .p-dot {
-          width: 8px; height: 8px;
-          clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-          transition: background 0.15s;
-        }
-        .p-dot.active { background: #ff0040; }
-        .p-dot.inactive { background: rgba(255,0,64,0.12); border: 1px solid rgba(255,0,64,0.2); }
-        .pin-input {
-          background: rgba(0,255,245,0.03); border: 1px solid rgba(0,255,245,0.2);
-          color: #00fff5; font-family: 'Orbitron', monospace; font-size: 18px;
-          font-weight: 700; padding: 10px 16px; width: 140px; letter-spacing: 8px;
-          outline: none; text-align: center;
-        }
-        .pin-input:focus { border-color: rgba(0,255,245,0.6); box-shadow: 0 0 12px rgba(0,255,245,0.1); }
-        .pin-input::placeholder { color: rgba(0,255,245,0.15); letter-spacing: 4px; font-size: 12px; }
-        .btn-save {
-          background: rgba(255,0,64,0.08); border: 1px solid #ff0040; color: #ff0040;
-          font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700;
-          letter-spacing: 4px; padding: 14px 40px; cursor: pointer;
-          clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-          transition: all 0.2s;
-        }
-        .btn-save:hover { background: #ff0040; color: #000; box-shadow: 0 0 24px rgba(255,0,64,0.4); }
-        .btn-save.saving { background: #ff0040; color: #000; }
-        .btn-back {
-          background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.3);
-          font-family: 'Share Tech Mono', monospace; font-size: 10px;
-          letter-spacing: 3px; padding: 14px 28px; cursor: pointer;
-          transition: all 0.2s;
-        }
-        .btn-back:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.6); }
-        .sweep {
-          position: absolute; left: 0; right: 0; height: 1px; top: 0;
-          background: linear-gradient(90deg, transparent, rgba(0,255,245,0.3), transparent);
-          animation: sweep 5s linear infinite;
-        }
-        @keyframes sweep { from { top: 0; } to { top: 100%; } }
-        .count-display {
-          font-family: 'Orbitron', monospace; font-size: 32px; font-weight: 900;
-          color: #ff0040; min-width: 48px; text-align: right;
-          text-shadow: 0 0 20px rgba(255,0,64,0.4);
-        }
-        .max-label { font-size: 9px; color: rgba(255,255,255,0.15); letter-spacing: 1px; margin-top: 2px; }
-      `}</style>
 
       <div className="scan-lines" />
 

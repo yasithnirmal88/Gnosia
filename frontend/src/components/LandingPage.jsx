@@ -1,33 +1,36 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import './LandingPage.css';
 
 export default function LandingPage({ onPlay, onCreateRoom }) {
   const [glitch, setGlitch]   = useState(false);
   const [loaded, setLoaded]   = useState(false);
-  const [scanY,  setScanY]    = useState(0);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const glitchTimerRef = useRef(null);
 
   // Fade-in on mount
-  useEffect(() => { setTimeout(() => setLoaded(true), 80); }, []);
+  useEffect(() => {
+    const id = setTimeout(() => setLoaded(true), 80);
+    return () => clearTimeout(id);
+  }, []);
 
   // Title glitch every 4 s
   useEffect(() => {
     const id = setInterval(() => {
       setGlitch(true);
-      setTimeout(() => setGlitch(false), 160);
+      if (glitchTimerRef.current) clearTimeout(glitchTimerRef.current);
+      glitchTimerRef.current = setTimeout(() => setGlitch(false), 160);
     }, 4000);
-    return () => clearInterval(id);
-  }, []);
-
-  // Scan-line sweep (CSS handles it, this is just a shimmer ticker for the data readout)
-  useEffect(() => {
-    const id = setInterval(() => setScanY(v => (v + 1) % 100), 40);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      if (glitchTimerRef.current) {
+        clearTimeout(glitchTimerRef.current);
+        glitchTimerRef.current = null;
+      }
+    };
   }, []);
 
   return (
     <div style={S.root}>
-      <style>{CSS}</style>
-
       {/* Overlay effects */}
       <div className="g-scanlines" />
       <div className="g-noise"     />
@@ -253,143 +256,3 @@ const S = {
     fontSize: 8, color: "rgba(255,255,255,.1)", letterSpacing: 3, whiteSpace: "nowrap",
   },
 };
-
-/* ─── CSS string ─────────────────────────────────────────── */
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap');
-
-.g-scanlines {
-  position:fixed; inset:0; pointer-events:none; z-index:1;
-  background: repeating-linear-gradient(
-    0deg, transparent, transparent 3px,
-    rgba(0,255,65,.025) 3px, rgba(0,255,65,.025) 4px
-  );
-}
-.g-noise {
-  position:fixed; inset:0; pointer-events:none; z-index:1; opacity:.045;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-/* Fade-in */
-.g-fadein { opacity:0; transform:translateY(18px); }
-.g-fadein-go { animation: gFadeUp .7s ease forwards; }
-@keyframes gFadeUp { to { opacity:1; transform:translateY(0); } }
-
-/* Title */
-.g-title {
-  font-family:'Orbitron',monospace;
-  font-size: clamp(58px,9vw,110px);
-  font-weight:900; color:#fff; letter-spacing:8px; line-height:1;
-  text-shadow: 0 0 40px rgba(255,255,255,.08);
-  position:relative;
-}
-.g-glitch::before, .g-glitch::after {
-  content: attr(data-text);
-  position:absolute; top:0; left:0; width:100%; height:100%; overflow:hidden;
-}
-.g-glitch::before {
-  color:#ff0040; clip-path:polygon(0 15%,100% 15%,100% 35%,0 35%);
-  transform:translate(-5px,0); opacity:.85;
-}
-.g-glitch::after {
-  color:#00fff5; clip-path:polygon(0 58%,100% 58%,100% 78%,0 78%);
-  transform:translate(5px,0); opacity:.85;
-}
-
-/* Buttons */
-.g-btn-primary {
-  font-family:'Orbitron',monospace; font-size:13px; font-weight:900;
-  letter-spacing:5px; padding:16px 56px;
-  background:transparent; border:2px solid #ff0040; color:#ff0040;
-  clip-path:polygon(14px 0%,100% 0%,calc(100% - 14px) 100%,0 100%);
-  cursor:pointer; transition:all .2s;
-}
-.g-btn-primary:hover {
-  background:#ff0040; color:#000;
-  box-shadow:0 0 30px #ff0040, 0 0 70px rgba(255,0,64,.35);
-}
-.g-btn-secondary {
-  font-size:11px; letter-spacing:4px; padding:12px 42px;
-  background:transparent; border:1px solid rgba(0,255,245,.25); color:rgba(0,255,245,.55);
-  cursor:pointer; transition:all .2s;
-}
-.g-btn-secondary:hover { border-color:#00fff5; color:#00fff5; background:rgba(0,255,245,.05); }
-
-/* Footer links */
-.g-link {
-  font-size:9px; color:rgba(255,255,255,.2); letter-spacing:3px; cursor:pointer;
-  transition:color .2s;
-}
-.g-link:hover { color:rgba(0,255,245,.6); }
-
-/* Pulse border on char frame */
-.g-pulse-border { animation: pBorder 2s ease-in-out infinite; }
-@keyframes pBorder {
-  0%,100% { box-shadow:0 0 0 1px rgba(255,0,64,.2); }
-  50%      { box-shadow:0 0 0 1px rgba(255,0,64,.7), 0 0 25px rgba(255,0,64,.15); }
-}
-
-/* Corner brackets */
-.g-corner { position:absolute; width:18px; height:18px; }
-.g-tl { top:0;    left:0;  border-top:2px solid #ff0040; border-left:2px solid #ff0040; }
-.g-tr { top:0;    right:0; border-top:2px solid #ff0040; border-right:2px solid #ff0040; }
-.g-bl { bottom:0; left:0;  border-bottom:2px solid #ff0040; border-left:2px solid #ff0040; }
-.g-br { bottom:0; right:0; border-bottom:2px solid #ff0040; border-right:2px solid #ff0040; }
-
-/* Cyan scan sweep */
-.g-sweep {
-  position:absolute; left:0; right:0; height:2px; z-index:2;
-  background:linear-gradient(90deg,transparent,rgba(0,255,245,.45),transparent);
-  animation:gSweep 3s linear infinite;
-}
-@keyframes gSweep { 0%{top:-2px} 100%{top:100%} }
-
-/* Modal Styles */
-.g-modal-overlay {
-  position: fixed; inset: 0; z-index: 100;
-  background: rgba(0, 5, 16, 0.85);
-  backdrop-filter: blur(8px);
-  display: flex; align-items: center; justify-content: center;
-  padding: 40px;
-  animation: gFadeIn 0.3s forwards;
-}
-@keyframes gFadeIn { from{opacity:0;} to{opacity:1;} }
-
-.g-modal-content {
-  background: rgba(0, 10, 25, 0.9);
-  border: 1px solid rgba(0, 255, 245, 0.4);
-  max-width: 680px; width: 100%;
-  padding: 40px;
-  position: relative;
-  box-shadow: 0 0 50px rgba(0, 255, 245, 0.15), inset 0 0 20px rgba(0, 255, 245, 0.1);
-  clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
-}
-
-.g-modal-title {
-  font-family: 'Orbitron', monospace;
-  font-size: 18px; color: #00fff5; letter-spacing: 4px;
-  margin-bottom: 30px; border-bottom: 1px solid rgba(0,255,245,0.2);
-  padding-bottom: 15px;
-}
-
-.g-modal-body {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 14px;
-  color: rgba(200, 220, 230, 0.8);
-  line-height: 1.6; letter-spacing: 1px;
-}
-
-.g-btn-close {
-  margin-top: 40px;
-  width: 100%; padding: 16px;
-  background: rgba(0,255,245,0.05);
-  border: 1px solid rgba(0,255,245,0.3);
-  color: #00fff5; font-family: 'Orbitron', monospace;
-  font-size: 11px; letter-spacing: 5px; font-weight: 700;
-  cursor: pointer; transition: all 0.2s;
-  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-}
-.g-btn-close:hover {
-  background: #00fff5; color: #000; box-shadow: 0 0 20px rgba(0,255,245,0.4);
-}
-`;
