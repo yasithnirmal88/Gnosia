@@ -107,12 +107,16 @@ public class GameLogicService {
         long gnosiaCount = alivePlayers.stream().filter(p -> p.getRole() == Role.GNOSIA).count();
         long humansCount = alivePlayers.size() - gnosiaCount;
         
+        // Humans win when every Gnosia is eliminated.
         if (gnosiaCount == 0) {
             log.info("Humans win in room " + room.getRoomCode());
             room.getGameState().setWinner(Role.HUMAN);
             return Role.HUMAN; 
         }
         
+        // Gnosia win when they equal or outnumber the remaining humans — this
+        // includes the final one-human-vs-Gnosia showdown (1 == 1) and any
+        // earlier point where Gnosia reach parity with the crew.
         if (gnosiaCount >= humansCount) {
             log.info("Gnosia win in room " + room.getRoomCode());
             room.getGameState().setWinner(Role.GNOSIA);

@@ -369,6 +369,33 @@ class GameIntegrationTest {
         assertThat(room.getGameState().getWinner()).isEqualTo(Role.HUMAN);
     }
 
+    @Test
+    void testGameContinuesWhileMultipleHumansRemain() {
+        assignRoles(Role.ENGINEER, Role.DOCTOR, Role.GUARDIAN_ANGEL, Role.GNOSIA, Role.HUMAN);
+
+        // One Gnosia (p4) alive with two humans (p1, p2): not a terminal state —
+        // the game must loop another meeting/warp cycle instead of ending.
+        p3.setAlive(false); p5.setAlive(false);
+        // Alive: p1 (ENG), p2 (DOC), p4 (GNOSIA) → 2 humans + 1 Gnosia
+
+        Role result = gameLogicService.checkWin(room);
+        assertThat(result).isNull();
+        assertThat(room.getGameState().getWinner()).isNull();
+    }
+
+    @Test
+    void testGnosiaWinWhenOneHumanRemains() {
+        assignRoles(Role.ENGINEER, Role.DOCTOR, Role.GUARDIAN_ANGEL, Role.GNOSIA, Role.HUMAN);
+
+        // Only one human left alongside the Gnosia — the final 1-vs-1 showdown.
+        // Alive: p4 (GNOSIA) + p5 (HUMAN).
+        p1.setAlive(false); p2.setAlive(false); p3.setAlive(false);
+
+        Role result = gameLogicService.checkWin(room);
+        assertThat(result).isEqualTo(Role.GNOSIA);
+        assertThat(room.getGameState().getWinner()).isEqualTo(Role.GNOSIA);
+    }
+
     // ─── INVALID ACTION REJECTION ──────────────────────────────
 
     @Test
