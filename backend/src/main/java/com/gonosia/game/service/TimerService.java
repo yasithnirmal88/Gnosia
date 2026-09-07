@@ -24,11 +24,15 @@ public class TimerService {
             for (Room room : roomManager.getAllRooms().values()) {
                 GameState state = room.getGameState();
                 if (state == null || state.getPhase() == Phase.LOBBY || state.getPhase() == Phase.GAME_OVER) continue;
-                
+
                 if (state.getRemainingTimeSeconds() > 0) {
                     state.setRemainingTimeSeconds(state.getRemainingTimeSeconds() - 1);
-                    gameService.broadcastState(room);
+                    // Lightweight countdown only — the full game state is broadcast on
+                    // real events (join/leave, phase transition, vote, action, etc.).
+                    gameService.broadcastTimerUpdate(room);
                 } else {
+                    // Phase transitions remain entirely server-authoritative: they are
+                    // triggered only by the server tick and always broadcast full state.
                     gameService.transitionPhase(room);
                 }
             }

@@ -322,6 +322,26 @@ public class GameService {
         }
     }
 
+    /**
+     * Lightweight real-time countdown frame for a room. This is the ONLY message
+     * broadcast on every timer tick: the full game state (see {@link #broadcastState})
+     * is broadcast exclusively on actual game events (join/leave, phase transition,
+     * vote, death, action result, game start/end, reconnect), so a busy meeting does
+     * not re-serialize and re-push the entire room state every second.
+     *
+     * Countdown values are always authoritative: they are produced by the server's
+     * own tick, never derived client-side, and clients must treat them as read-only.
+     */
+    public void broadcastTimerUpdate(Room room) {
+        GameState state = room.getGameState();
+        messagingTemplate.convertAndSend("/topic/room/" + room.getRoomCode() + "/timer",
+            Map.of(
+                "type", "TIMER_UPDATE",
+                "phase", state.getPhase().name(),
+                "remainingTimeSeconds", state.getRemainingTimeSeconds()
+            ));
+    }
+
     private String getGnosiaCrewCountAudio(int count) {
         if (count < 3) return "3crw.lobby.mp3"; 
         if (count > 15) return "15crw.lobby.mp3";

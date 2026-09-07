@@ -155,6 +155,22 @@ export const useGame = (initialRoomCode) => {
       setRoom(JSON.parse(response.body));
     });
 
+    // Real-time countdown. The server broadcasts the full room state only on
+    // actual events; between events it pushes a lightweight TIMER_UPDATE frame
+    // whose value is authoritative. Merge it in without replacing the whole
+    // room object (and without re-running the full game-state render path).
+    client.subscribe(`/topic/room/${code}/timer`, (response) => {
+      const update = JSON.parse(response.body);
+      setRoom(prev => prev ? {
+        ...prev,
+        gameState: {
+          ...prev.gameState,
+          phase: update.phase,
+          remainingTimeSeconds: update.remainingTimeSeconds,
+        },
+      } : prev);
+    });
+
     // Chat
     client.subscribe(`/topic/room/${code}/chat`, (response) => {
       setMessages(prev => [...prev, JSON.parse(response.body)]);
