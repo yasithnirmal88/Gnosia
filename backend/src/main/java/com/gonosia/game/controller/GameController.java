@@ -1,6 +1,8 @@
 package com.gonosia.game.controller;
 
 import com.gonosia.game.model.*;
+import com.gonosia.game.security.ActionDeniedException;
+import com.gonosia.game.security.GameActionAuthorizationService;
 import com.gonosia.game.security.SessionIdentityService;
 import com.gonosia.game.service.*;
 import org.slf4j.Logger;
@@ -13,6 +15,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.util.*;
+import java.util.function.Supplier;
 
 @Controller
 public class GameController {
@@ -22,13 +25,15 @@ public class GameController {
     private final RoomManager roomManager;
     private final GameService gameService;
     private final SessionIdentityService identityService;
+    private final GameActionAuthorizationService gameActionAuthorizationService;
 
     public GameController(SimpMessagingTemplate messagingTemplate, RoomManager roomManager, GameService gameService,
-            SessionIdentityService identityService) {
+            SessionIdentityService identityService, GameActionAuthorizationService gameActionAuthorizationService) {
         this.messagingTemplate = messagingTemplate;
         this.roomManager = roomManager;
         this.gameService = gameService;
         this.identityService = identityService;
+        this.gameActionAuthorizationService = gameActionAuthorizationService;
     }
 
     private final String[] GNOSIA_CHARACTERS = {
@@ -49,6 +54,16 @@ public class GameController {
         log.warn("[REJECTED] {} by {}: {}", action, actor.player().getName(), reason);
         messagingTemplate.convertAndSend(actor.privateTopic(),
             Map.of("type", "ACTION_REJECTED", "action", action, "reason", reason));
+    }
+
+    /** Run one of the authorization gates; on denial, emit ACTION_REJECTED and return null. */
+    private Player resolveOrReject(SessionIdentityService.Actor actor, Supplier<Player> resolver) {
+        try {
+            return resolver.get();
+        } catch (ActionDeniedException e) {
+            reject(actor, e.getAction(), e.getReason());
+            return null;
+        }
     }
 
     private void roomError(String channelKey, String message) {
@@ -209,11 +224,11 @@ public class GameController {
         SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
         if (actor == null) return;
 
-        if (room.getGameState().getPhase() == Phase.LOBBY) {
-            if (room.getPlayers().size() >= room.getConfig().getMaxPlayers()) {
-                gameService.transitionPhase(room);
-            }
-        }
+        Player starter = resolveOrReject(actor,
+                () -> gameActionAuthorizationService.requireCanStart(room, actor.player()));
+        if (starter == null) return;
+
+        gameService.transitionPhase(room);
     }
 
     @MessageMapping("/room/{roomCode}/vote")
@@ -223,28 +238,16 @@ public class GameController {
         if (room == null) return;
 
         SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
-        Player voter = actor != null ? actor.player() : null;
-        if (voter == null) return;
+        if (actor == null) return;
 
-        if (room.getGameState().getPhase() != Phase.VOTING) {
-            reject(actor, "VOTE", "Voting is not active right now");
-            return;
-        }
+        Player voter = actor.player();
+        Player target = resolveOrReject(actor,
+                () -> gameActionAuthorizationService.requireCanVote(room, voter, payload.get("targetId")));
+        if (target == null) return;
 
-        if (!voter.isAlive()) {
-            reject(actor, "VOTE", "Dead crew members cannot vote");
-            return;
-        }
-
-        if (voter.isCryoslept()) {
-            reject(actor, "VOTE", "Cryoslept crew members cannot vote");
-            return;
-        }
-
-        String targetId = payload.get("targetId");
-        room.getGameState().getCurrentVotes().put(voter.getId(), targetId);
+        room.getGameState().getCurrentVotes().put(voter.getId(), target.getId());
         room.getGameState().getPlayerActionDone().put(voter.getId(), "VOTED");
-        log.info("[VOTE] {} voted for {}", voter.getName(), targetId);
+        log.info("[VOTE] {} voted for {}", voter.getName(), target.getName());
         gameService.broadcastState(room);
     }
 
@@ -255,34 +258,12 @@ public class GameController {
         if (room == null) return;
 
         SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
-        Player scanner = actor != null ? actor.player() : null;
-        if (scanner == null) return;
+        if (actor == null) return;
 
-        if (room.getGameState().getPhase() != Phase.WARP) {
-            reject(actor, "SCAN", "Engineer scan is only available during WARP");
-            return;
-        }
-
-        if (!scanner.isAlive()) {
-            reject(actor, "SCAN", "Dead crew members cannot scan");
-            return;
-        }
-
-        if (scanner.isCryoslept()) {
-            reject(actor, "SCAN", "Cryoslept crew members cannot scan");
-            return;
-        }
-
-        if (scanner.getRole() != Role.ENGINEER) {
-            reject(actor, "SCAN", "Only the Engineer can scan");
-            return;
-        }
-
-        Player target = room.getPlayer(payload.get("targetId"));
-        if (target == null) {
-            reject(actor, "SCAN", "Target player not found");
-            return;
-        }
+        Player scanner = actor.player();
+        Player target = resolveOrReject(actor,
+                () -> gameActionAuthorizationService.requireCanScan(room, scanner, payload.get("targetId")));
+        if (target == null) return;
 
         log.info("[SCAN] Scanner={}, Target={}", scanner.getName(), target.getName());
         String result = target.getRole() == Role.GNOSIA ? "GNOSIA" : "HUMAN";
@@ -300,41 +281,12 @@ public class GameController {
         if (room == null) return;
 
         SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
-        Player doctor = actor != null ? actor.player() : null;
-        if (doctor == null) return;
+        if (actor == null) return;
 
-        if (room.getGameState().getPhase() != Phase.WARP) {
-            reject(actor, "DOCTOR_CHECK", "Doctor check is only available during WARP");
-            return;
-        }
-
-        if (!doctor.isAlive()) {
-            reject(actor, "DOCTOR_CHECK", "Dead crew members cannot perform a check");
-            return;
-        }
-
-        if (doctor.isCryoslept()) {
-            reject(actor, "DOCTOR_CHECK", "Cryoslept crew members cannot perform a check");
-            return;
-        }
-
-        if (doctor.getRole() != Role.DOCTOR) {
-            reject(actor, "DOCTOR_CHECK", "Only the Doctor can perform a check");
-            return;
-        }
-
-        String targetId = payload.get("targetId");
-        Player target = room.getPlayer(targetId);
-
-        if (target == null) {
-            reject(actor, "DOCTOR_CHECK", "Target player not found");
-            return;
-        }
-
-        if (!target.isCryoslept()) {
-            reject(actor, "DOCTOR_CHECK", "You can only check cryoslept crew members");
-            return;
-        }
+        Player doctor = actor.player();
+        Player target = resolveOrReject(actor,
+                () -> gameActionAuthorizationService.requireCanDoctorCheck(room, doctor, payload.get("targetId")));
+        if (target == null) return;
 
         log.info("[DOCTOR] Doctor={}, Target={}, TargetCryoslept={}", doctor.getName(), target.getName(), target.isCryoslept());
         String result = target.getRole() == Role.GNOSIA ? "GNOSIA" : "HUMAN";
@@ -352,34 +304,12 @@ public class GameController {
         if (room == null) return;
 
         SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
-        Player ga = actor != null ? actor.player() : null;
-        if (ga == null) return;
+        if (actor == null) return;
 
-        if (room.getGameState().getPhase() != Phase.WARP) {
-            reject(actor, "PROTECT", "Guardian Angel protect is only available during WARP");
-            return;
-        }
-
-        if (!ga.isAlive()) {
-            reject(actor, "PROTECT", "Dead crew members cannot protect");
-            return;
-        }
-
-        if (ga.isCryoslept()) {
-            reject(actor, "PROTECT", "Cryoslept crew members cannot protect");
-            return;
-        }
-
-        if (ga.getRole() != Role.GUARDIAN_ANGEL) {
-            reject(actor, "PROTECT", "Only the Guardian Angel can protect");
-            return;
-        }
-
-        Player target = room.getPlayer(payload.get("targetId"));
-        if (target == null) {
-            reject(actor, "PROTECT", "Target player not found");
-            return;
-        }
+        Player ga = actor.player();
+        Player target = resolveOrReject(actor,
+                () -> gameActionAuthorizationService.requireCanProtect(room, ga, payload.get("targetId")));
+        if (target == null) return;
 
         log.info("[PROTECT] {} shielded: {}", ga.getName(), target.getName());
         room.getGameState().setProtectedPlayerId(target.getId());
@@ -394,35 +324,13 @@ public class GameController {
         if (room == null) return;
 
         SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
-        Player gnosia = actor != null ? actor.player() : null;
-        if (gnosia == null) return;
+        if (actor == null) return;
 
-        if (room.getGameState().getPhase() != Phase.WARP) {
-            reject(actor, "KILL", "Kill vote is only available during WARP");
-            return;
-        }
-
-        if (!gnosia.isAlive()) {
-            reject(actor, "KILL", "Dead Gnosia cannot vote to kill");
-            return;
-        }
-
-        if (gnosia.isCryoslept()) {
-            reject(actor, "KILL", "Cryoslept Gnosia cannot vote to kill");
-            return;
-        }
-
-        if (gnosia.getRole() != Role.GNOSIA) {
-            reject(actor, "KILL", "Only Gnosia can vote to kill");
-            return;
-        }
-
-        String targetId = payload.get("targetId");
-        Player target = room.getPlayer(targetId);
-        if (target == null || !target.isAlive() || target.getRole() == Role.GNOSIA) {
-            reject(actor, "KILL", "Invalid target — must be an alive human crew member");
-            return;
-        }
+        Player gnosia = actor.player();
+        Player target = resolveOrReject(actor,
+                () -> gameActionAuthorizationService.requireCanKill(room, gnosia, payload.get("targetId")));
+        if (target == null) return;
+        String targetId = target.getId();
 
         GameState state = room.getGameState();
         state.getGnosiaVotes().put(gnosia.getId(), targetId);
