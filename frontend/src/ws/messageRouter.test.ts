@@ -1,16 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { makeRouter, safeParse, stampId } from './messageRouter'
+import { makeRouter, safeParse, stampId, type MessageHandlers } from './messageRouter'
+import type { Room, PublicMessage } from '../types/contracts'
+import type { ServerTopic } from '../types/ws'
 
-const validRoom = {
+const validRoom: Room = {
   roomCode: 'ABC123',
   players: [
     { id: 'p1', name: 'SETSU', alive: true },
     { id: 'p2', name: 'JINA', alive: false },
   ],
-  gameState: { phase: 'LOBBY', remainingTimeSeconds: 90 },
+  gameState: {
+    phase: 'LOBBY',
+    remainingTimeSeconds: 90,
+    currentVotes: {},
+    lastRoleResults: {},
+    leviObservations: [],
+    behavioralInsights: {},
+    gnosiaVotes: {},
+    votingResults: {},
+    playerActionDone: {},
+    gnosiaStillOnboard: false,
+  },
 }
 
-const makeHandlers = () => ({
+type MockHandlerMap = { [K in keyof MessageHandlers]: ReturnType<typeof vi.fn> }
+
+const makeHandlers = (): MockHandlerMap => ({
   onRoom: vi.fn(),
   onTimer: vi.fn(),
   onChat: vi.fn(),
@@ -26,7 +41,7 @@ const makeHandlers = () => ({
   onSignal: vi.fn(),
 })
 
-const frame = (body) => ({ body: JSON.stringify(body) })
+type Router = ReturnType<typeof makeRouter>
 
 describe('safeParse', () => {
   it('parses valid JSON', () => {
@@ -35,7 +50,7 @@ describe('safeParse', () => {
 
   it('rejects malformed JSON without throwing', () => {
     const r = safeParse('{oops')
-    expect(r.ok).toBe(false)
+    if (r.ok) throw new Error('expected parse failure')
     expect(r.reason).toBe('bad-json')
   })
 
@@ -47,49 +62,51 @@ describe('safeParse', () => {
 })
 
 describe('messageRouter', () => {
-  let handlers
-  let router
+  let handlers: MockHandlerMap
+  let router: Router
 
   beforeEach(() => {
     handlers = makeHandlers()
     router = makeRouter(handlers)
   })
 
+  const route = (topic: ServerTopic, body: unknown) => router.route(topic, JSON.stringify(body))
+
   it('routes a valid room frame', () => {
-    router.route('room', JSON.stringify(validRoom))
+    route('room', validRoom)
     expect(handlers.onRoom).toHaveBeenCalledWith(validRoom)
   })
 
   it('drops a room frame with missing players and does not call handlers', () => {
-    router.route('room', JSON.stringify({ roomCode: 'X' }))
+    route('room', { roomCode: 'X' })
     expect(handlers.onRoom).not.toHaveBeenCalled()
   })
 
   it('routes a valid timer frame', () => {
-    router.route('timer', JSON.stringify({ phase: 'DISCUSSION', remainingTimeSeconds: 42 }))
+    route('timer', { phase: 'DISCUSSION', remainingTimeSeconds: 42 })
     expect(handlers.onTimer).toHaveBeenCalledWith({ phase: 'DISCUSSION', remainingTimeSeconds: 42 })
   })
 
   it('drops a timer frame with a non-numeric countdown', () => {
-    router.route('timer', JSON.stringify({ phase: 'DISCUSSION', remainingTimeSeconds: 'hi' }))
+    route('timer', { phase: 'DISCUSSION', remainingTimeSeconds: 'hi' })
     expect(handlers.onTimer).not.toHaveBeenCalled()
   })
 
   it('stamps stable ids onto chat frames', () => {
-    router.route('chat', JSON.stringify({ senderId: 'p1', senderName: 'SETSU', content: 'hi' }))
-    const [msg] = handlers.onChat.mock.calls[0]
+    route('chat', { senderId: 'p1', senderName: 'SETSU', content: 'hi' })
+    const [msg] = handlers.onChat!.mock.calls[0]
     expect(msg.senderId).toBe('p1')
     expect(msg.id).toBeTruthy()
     // Same payload twice → different ids (unique, never Math.random keys)
-    router.route('chat', JSON.stringify({ senderId: 'p1', senderName: 'SETSU', content: 'hi again' }))
-    const [msg2] = handlers.onChat.mock.calls[1]
+    route('chat', { senderId: 'p1', senderName: 'SETSU', content: 'hi again' })
+    const [msg2] = handlers.onChat!.mock.calls[1]
     expect(msg2.id).toBeTruthy()
     expect(msg2.id).not.toBe(msg.id)
   })
 
   it('keeps an existing id when the server provides one', () => {
-    router.route('chat', JSON.stringify({ id: 'fixed-1', senderId: 'p1', senderName: 'S', content: 'x' }))
-    expect(handlers.onChat.mock.calls[0][0].id).toBe('fixed-1')
+    route('chat', { id: 'fixed-1', senderId: 'p1', senderName: 'S', content: 'x' })
+    expect(handlers.onChat!.mock.calls[0][0].id).toBe('fixed-1')
   })
 
   it('does not crash on malformed JSON frames', () => {
@@ -101,62 +118,62 @@ describe('messageRouter', () => {
   })
 
   it('routes private DM envelopes and stamps the nested message', () => {
-    router.route('private', JSON.stringify({
+    route('private', {
       type: 'DM',
       withId: 'p2',
       message: { senderId: 'p2', senderName: 'JINA', content: 'psst' },
-    }))
-    const [payload] = handlers.onDm.mock.calls[0]
+    })
+    const [payload] = handlers.onDm!.mock.calls[0]
     expect(payload.withId).toBe('p2')
     expect(payload.message.id).toBeTruthy()
     expect(payload.message.content).toBe('psst')
   })
 
   it('routes ROOM_CREATED private frames', () => {
-    router.route('private', JSON.stringify({ type: 'ROOM_CREATED', roomCode: 'ZZ99' }))
+    route('private', { type: 'ROOM_CREATED', roomCode: 'ZZ99' })
     expect(handlers.onRoomCreated).toHaveBeenCalledWith('ZZ99')
   })
 
   it('routes ACTION_REJECTED frames', () => {
-    router.route('private', JSON.stringify({ type: 'ACTION_REJECTED', action: 'VOTE', reason: 'too slow' }))
+    route('private', { type: 'ACTION_REJECTED', action: 'VOTE', reason: 'too slow' })
     expect(handlers.onActionRejected).toHaveBeenCalledWith({ action: 'VOTE', reason: 'too slow' })
   })
 
   it('routes SIGNAL frames', () => {
-    router.route('private', JSON.stringify({ type: 'SIGNAL', fromId: 'p2', signal: { sdp: 'x' } }))
+    route('private', { type: 'SIGNAL', fromId: 'p2', signal: { sdp: 'x' } })
     expect(handlers.onSignal).toHaveBeenCalledWith({ fromId: 'p2', signal: { sdp: 'x' } })
   })
 
   it('routes GNOSIA_CHAT frames', () => {
-    router.route('private', JSON.stringify({ type: 'GNOSIA_CHAT', message: { senderId: 'p1', senderName: 'G', content: 'kill' } }))
+    route('private', { type: 'GNOSIA_CHAT', message: { senderId: 'p1', senderName: 'G', content: 'kill' } })
     expect(handlers.onGnosiaChat).toHaveBeenCalled()
   })
 
   it('routes JOIN_ERROR frames', () => {
-    router.route('private', JSON.stringify({ type: 'JOIN_ERROR', message: 'Nope' }))
+    route('private', { type: 'JOIN_ERROR', message: 'Nope' })
     expect(handlers.onJoinError).toHaveBeenCalledWith('Nope')
   })
 
   it('routes SCAN_RESULT / DOCTOR_CHECK_RESULT / PRIVATE_INFO frames', () => {
-    router.route('private', JSON.stringify({ type: 'SCAN_RESULT', result: 'GNOSIA', subjectId: 'p2' }))
-    router.route('private', JSON.stringify({ type: 'DOCTOR_CHECK_RESULT', result: 'HUMAN', subjectId: 'p2' }))
-    router.route('private', JSON.stringify({ type: 'PRIVATE_INFO', role: 'ENGINEER', partners: [] }))
+    route('private', { type: 'SCAN_RESULT', result: 'GNOSIA', targetId: 'p2' })
+    route('private', { type: 'DOCTOR_CHECK_RESULT', result: 'HUMAN', targetId: 'p2' })
+    route('private', { type: 'PRIVATE_INFO', role: 'ENGINEER', partners: [] })
     expect(handlers.onScanResult).toHaveBeenCalledWith(expect.objectContaining({ result: 'GNOSIA' }))
     expect(handlers.onDoctorResult).toHaveBeenCalledWith(expect.objectContaining({ result: 'HUMAN' }))
     expect(handlers.onPrivateInfo).toHaveBeenCalledWith(expect.objectContaining({ role: 'ENGINEER' }))
   })
 
   it('drops unknown private types and malformed envelopes without throwing', () => {
-    expect(() => router.route('private', JSON.stringify({ type: 'WEIRD_THING' }))).not.toThrow()
-    expect(() => router.route('private', JSON.stringify({ noType: true }))).not.toThrow()
-    expect(() => router.route('private', JSON.stringify({ type: 'DM', withId: 'x' }))).not.toThrow()
+    expect(() => route('private', { type: 'WEIRD_THING' })).not.toThrow()
+    expect(() => route('private', { noType: true })).not.toThrow()
+    expect(() => route('private', { type: 'DM', withId: 'x' })).not.toThrow()
     expect(handlers.onDm).not.toHaveBeenCalled()
   })
 })
 
 describe('stampId', () => {
-  it('is stable for repeated calls on the same message', () => {
-    const a = stampId({ senderId: 'p1', content: 'x' })
+  it('produces a stable id on repeated calls', () => {
+    const a: PublicMessage = stampId({ senderId: 'p1', senderName: 'S', content: 'x' })
     expect(a.id).toBeTruthy()
   })
 })

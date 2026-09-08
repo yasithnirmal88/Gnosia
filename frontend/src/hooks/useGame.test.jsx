@@ -69,7 +69,21 @@ const roomPayload = (over = {}) => ({
     { id: 'player-1', name: 'SETSU', alive: true },
     { id: 'player-2', name: 'JINA', alive: true },
   ],
-  gameState: { phase: 'LOBBY', remainingTimeSeconds: 90, ...over },
+  // Mirrors a real room frame (GameState.java defaults) so the exact shape the
+  // zod-router normalizes to can be asserted with a strict toEqual.
+  gameState: {
+    phase: 'LOBBY',
+    remainingTimeSeconds: 90,
+    currentVotes: {},
+    lastRoleResults: {},
+    leviObservations: [],
+    behavioralInsights: {},
+    gnosiaVotes: {},
+    votingResults: {},
+    playerActionDone: {},
+    gnosiaStillOnboard: false,
+    ...over,
+  },
 })
 
 const emit = (client, dest, payload) => {

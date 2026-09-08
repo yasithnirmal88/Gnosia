@@ -7,7 +7,7 @@
  */
 
 /** Append `item` to `list`, dropping the oldest entries beyond `max`. */
-export const pushBounded = (list, item, max) => {
+export const pushBounded = <T>(list: readonly T[], item: T, max: number): T[] => {
   if (max <= 0) return [item];
   const next = list.length >= max ? list.slice(-(max - 1)) : list;
   return [...next, item];
