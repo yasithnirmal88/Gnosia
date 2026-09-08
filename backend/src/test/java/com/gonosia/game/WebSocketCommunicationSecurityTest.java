@@ -195,7 +195,6 @@ class WebSocketCommunicationSecurityTest {
         // Server stamps the real sender and ignores client sender fields.
         assertThat(chat.get("senderId")).isEqualTo("vc-a");
         assertThat(chat.get("senderName")).isNotEqualTo("Spoofed");
-        assertThat(chat.get("gonosiaOnly")).isEqualTo(Boolean.FALSE);
     }
 
     @Test

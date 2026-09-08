@@ -75,9 +75,8 @@ public class ChatController {
 
     // ─── Public room chat ───────────────────────────────────────────────────
     // Sender derived from session. Message length/size enforced. Sender must be
-    // a live member. The isGonosiaOnly flag is NEVER trusted from the client —
-    // a human cannot mark a public message as Gnosia-only (that stays a client
-    // display hint only, always forced to the ordinary public value).
+    // a live member. Gnosia-only chatter lives in its own endpoint; the public
+    // room chat envelope carries no client-trustable channel flag.
     @MessageMapping("/room/{roomCode}/chat")
     public void handleChat(@DestinationVariable String roomCode, @Payload ChatMessage message,
             SimpMessageHeaderAccessor headerAccessor) {
@@ -105,9 +104,6 @@ public class ChatController {
         msg.setSenderId(sender.getId());
         msg.setSenderName(sender.getName());
         msg.setContent(content);
-        // Server-controlled: dead players and non-Gnosia can never "whisper" as
-        // gnosia-only via the public channel; force the ordinary value.
-        msg.setGonosiaOnly(false);
 
         messagingTemplate.convertAndSend("/topic/room/" + roomCode + "/chat", msg);
     }
@@ -210,7 +206,6 @@ public class ChatController {
         msg.setSenderId(sender.getId());
         msg.setSenderName(sender.getName());
         msg.setContent(content);
-        msg.setGonosiaOnly(true);
 
         room.getPlayers().stream()
                 .filter(p -> p.isAlive() && !p.isCryoslept() && p.getRole() == Role.GNOSIA)

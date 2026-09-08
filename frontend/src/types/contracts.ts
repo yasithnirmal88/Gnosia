@@ -116,8 +116,6 @@ export interface ChatMessage {
   senderId: string;
   senderName: string;
   content: string;
-  /** Server-controlled display hint for the gnosia-only channel. */
-  gonosiaOnly?: boolean;
 }
 
 /**

@@ -96,7 +96,6 @@ export const chatMessageSchema: z.ZodType<ChatMessage> = z.object({
   senderId: z.string().min(1),
   senderName: z.string(),
   content: z.string(),
-  gonosiaOnly: z.boolean().optional(),
 }).passthrough();
 
 /** Lightweight countdown frame (GameService#broadcastTimerUpdate). `type` is

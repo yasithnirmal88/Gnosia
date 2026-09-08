@@ -449,7 +449,6 @@ export const useGame = (initialRoomCode: string) => {
     timer,
     connect,
     connectToMedia,
-    streamReady,
     streams,
     sendMessage,
     vote,

@@ -269,7 +269,7 @@ const App = () => {
                         COMMENCE
                     </button>
                 )}
-                {currentPhase === 'LOBBY' && room.config && room.players.length < room.config.maxPlayers && (
+                {import.meta.env.DEV && currentPhase === 'LOBBY' && room.config && room.players.length < room.config.maxPlayers && (
                     <div style={{marginLeft: '20px', fontSize: '12px', color: '#ff0040', fontWeight: 'bold'}}>
                         WAITING FOR CREW ({room.players.length}/{room.config.maxPlayers})
                         <button onClick={fillWithBots} style={{marginLeft: '10px', padding: '2px 8px', background: '#333', color: '#fff', border: 'none', cursor: 'pointer'}}>
