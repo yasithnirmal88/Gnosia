@@ -1,32 +1,69 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Client } from '@stomp/stompjs';
+import type { IFrame, IMessage, IStompSocket } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { LeviAudio } from '../audio/LeviAudio';
 import { MeshPeerManager } from '../webrtc/peerManager';
 import { makeRouter } from '../ws/messageRouter';
-import { pushBounded, MAX_PUBLIC_MESSAGES, MAX_GNOSIA_CHAT_MESSAGES, MAX_DM_MESSAGES_PER_PARTNER } from '../utils/collections';
+import {
+  pushBounded,
+  MAX_PUBLIC_MESSAGES,
+  MAX_GNOSIA_CHAT_MESSAGES,
+  MAX_DM_MESSAGES_PER_PARTNER,
+} from '../utils/collections';
+import type { PublicMessage, Room } from '../types/contracts';
+import type {
+  DoctorResultFrame,
+  PrivateInfoFrame,
+  ScanResultFrame,
+} from '../types/schemas';
+import type {
+  ActionError,
+  ChatSendPayload,
+  DmSendPayload,
+  DoctorCheckSendPayload,
+  GnosiaChatSendPayload,
+  KillSendPayload,
+  ProtectSendPayload,
+  RoomCreatePayload,
+  ScanSendPayload,
+  ServerTopic,
+  SignalSendPayload,
+  TimerTick,
+  VoteSendPayload,
+} from '../types/ws';
 
-const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/game-ws';
+const SOCKET_URL: string = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/game-ws';
 
-export const useGame = (initialRoomCode) => {
-  const [room, setRoomState] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [dmMessages, setDmMessages] = useState({}); // { partnerId: [msg, msg] }
-  const [privateInfo, setPrivateInfo] = useState(null);
-  const [scanResult, setScanResult] = useState(null);
-  const [doctorResult, setDoctorResult] = useState(null);
-  const [joinError, setJoinError] = useState(null);
-  const [actionError, setActionError] = useState(null);
-  const [gnosiaChatMessages, setGnosiaChatMessages] = useState([]);
+/**
+ * @stomp/stompjs `Client` extended with the module-private subscription dedupe
+ * set. Only an optional extra key, so this widening is safe and needs no `any`.
+ */
+type GnosiaClient = Client & { __gnosiaSubs?: Set<string> };
+
+export const useGame = (initialRoomCode: string) => {
+  const [room, setRoomState] = useState<Room | null>(null);
+  const [messages, setMessages] = useState<PublicMessage[]>([]);
+  const [dmMessages, setDmMessages] = useState<Record<string, PublicMessage[]>>({}); // { partnerId: [msg, msg] }
+  const [privateInfo, setPrivateInfo] = useState<PrivateInfoFrame | null>(null);
+  const [scanResult, setScanResult] = useState<ScanResultFrame | null>(null);
+  const [doctorResult, setDoctorResult] = useState<DoctorResultFrame | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<ActionError | null>(null);
+  const [gnosiaChatMessages, setGnosiaChatMessages] = useState<PublicMessage[]>([]);
   const [stompReady, setStompReady] = useState(false);
   const [streamReady, setStreamReady] = useState(false);
   // Countdown ticks in every room are pushed as lightweight TIMER_UPDATE
   // frames. They live in their own state slice so re-rendering on the countdown
   // never re-runs the whole game tree (the `room` object identity is untouched
   // until an actual state frame arrives).
-  const [timer, setTimer] = useState({ phase: null, remainingTimeSeconds: 0 });
-  const [streams, setStreams] = useState({});
-  const [playerId] = useState(() => {
+  const [timer, setTimer] = useState<TimerTick>({ phase: null, remainingTimeSeconds: 0 });
+  const [streams, setStreams] = useState<Record<string, MediaStream>>({});
+  // setTimeout's return type differs across the DOM/Node type worlds that can
+  // end up in this program (vitest pulls node typings in), so store whichever
+  // ID type the active lib provides rather than hard-coding `number`.
+  type TimeoutId = ReturnType<typeof setTimeout>;
+  const [playerId] = useState<string>(() => {
     const stored = localStorage.getItem('gnosia_player_id');
     if (stored) return stored;
     const newId = crypto.randomUUID();
@@ -35,7 +72,7 @@ export const useGame = (initialRoomCode) => {
   });
 
   // Identity key: persistent secret that binds playerId to this client's session.
-  const [identityKey] = useState(() => {
+  const [identityKey] = useState<string>(() => {
     const stored = localStorage.getItem('gnosia_identity_key');
     if (stored) return stored;
     const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -46,25 +83,25 @@ export const useGame = (initialRoomCode) => {
 
   // ─── Refs kept in sync for use inside stable callbacks ──────────────────────
 
-  const stompClient = useRef(null);
-  const pinRef = useRef('');
-  const roomCodeRef = useRef('');
-  const roomRef = useRef(null);
-  const initialRoomCodeRef = useRef(initialRoomCode);
-  const userStream = useRef(null);
-  const peerManagerRef = useRef(null);
+  const stompClient = useRef<GnosiaClient | null>(null);
+  const pinRef = useRef<string>('');
+  const roomCodeRef = useRef<string>('');
+  const roomRef = useRef<Room | null>(null);
+  const initialRoomCodeRef = useRef<string>(initialRoomCode);
+  const userStream = useRef<MediaStream | null>(null);
+  const peerManagerRef = useRef<MeshPeerManager | null>(null);
   // Generations let a superseded connect() ignore callbacks from its zombie
   // client while deactivate() is still winding it down.
-  const connectGenRef = useRef(0);
+  const connectGenRef = useRef<number>(0);
   // Timeouts that must not fire after unmount / after being superseded.
-  const actionErrorTimerRef = useRef(null);
-  const leviTimersRef = useRef(new Set());
+  const actionErrorTimerRef = useRef<TimeoutId | null>(null);
+  const leviTimersRef = useRef<Set<TimeoutId>>(new Set());
 
   // Keep refs in sync so stable callbacks never read stale render closures.
   useEffect(() => { initialRoomCodeRef.current = initialRoomCode; }, [initialRoomCode]);
 
   /** setter wrapper: mirrors `room` into a ref for stable callbacks. */
-  const setRoom = useCallback((next) => {
+  const setRoom = useCallback((next: Room | null) => {
     roomRef.current = next;
     setRoomState(next);
   }, []);
@@ -78,16 +115,7 @@ export const useGame = (initialRoomCode) => {
     }
   }, []);
 
-  const schedule = useCallback((fn, delay) => {
-    const id = setTimeout(() => {
-      leviTimersRef.current.delete(id);
-      fn();
-    }, delay);
-    leviTimersRef.current.add(id);
-    return id;
-  }, []);
-
-  const flashActionError = useCallback((err) => {
+  const flashActionError = useCallback((err: ActionError) => {
     setActionError(err);
     if (actionErrorTimerRef.current) clearTimeout(actionErrorTimerRef.current);
     actionErrorTimerRef.current = setTimeout(() => {
@@ -106,10 +134,10 @@ export const useGame = (initialRoomCode) => {
 
   const router = useMemo(() => makeRouter({
     onRoom: setRoom,
-    onTimer: (t) => setTimer(t),
-    onChat: (msg) => setMessages(prev => pushBounded(prev, msg, MAX_PUBLIC_MESSAGES)),
+    onTimer: (t: TimerTick) => setTimer(t),
+    onChat: (msg: PublicMessage) => setMessages(prev => pushBounded(prev, msg, MAX_PUBLIC_MESSAGES)),
     onEvent: () => {}, // unused for now; kept so events frames are validated
-    onRoomCreated: (code) => {
+    onRoomCreated: (code: string) => {
       setRoomCodeRefFor(code);
       // The room state subscription happens in subscribeToState below; trigger
       // it only if this wasn't already the active room.
@@ -118,17 +146,18 @@ export const useGame = (initialRoomCode) => {
     onPrivateInfo: setPrivateInfo,
     onScanResult: setScanResult,
     onDoctorResult: setDoctorResult,
-    onJoinError: (message) => {
+    onJoinError: (message: string) => {
       setJoinError(message);
       localStorage.removeItem('gnosia_room_code');
     },
-    onActionRejected: ({ action, reason }) => flashActionError({ action, reason }),
-    onGnosiaChat: (msg) => setGnosiaChatMessages(prev => pushBounded(prev, msg, MAX_GNOSIA_CHAT_MESSAGES)),
-    onDm: ({ withId, message }) => setDmMessages(prev => ({
+    onActionRejected: ({ action, reason }: ActionError) => flashActionError({ action, reason }),
+    onGnosiaChat: (msg: PublicMessage) => setGnosiaChatMessages(prev => pushBounded(prev, msg, MAX_GNOSIA_CHAT_MESSAGES)),
+    onDm: ({ withId, message }: { withId: string; message: PublicMessage }) => setDmMessages(prev => ({
       ...prev,
       [withId]: pushBounded(prev[withId] || [], message, MAX_DM_MESSAGES_PER_PARTNER),
     })),
-    onSignal: ({ fromId, signal }) => peerManagerRef.current?.handleSignal(fromId, signal),
+    onSignal: ({ fromId, signal }: { fromId: string; signal: Record<string, unknown> }) =>
+      peerManagerRef.current?.handleSignal(fromId, signal),
   }),
   // React-triggered a11y: setRoomCodeRefFor + setRoom are stable; the rest are
   // stable setters passed by value. `subscribeToState` is stable (below).
@@ -137,8 +166,8 @@ export const useGame = (initialRoomCode) => {
 
   // Habitual setter for hook-internal roomCode state (used by onRoomCreated). We
   // keep the code authoritative in refs, so this only feeds existing renders.
-  const [, setRoomCode] = useState('');
-  const setRoomCodeRefFor = useCallback((code) => {
+  const [, setRoomCode] = useState<string>('');
+  const setRoomCodeRefFor = useCallback((code: string) => {
     roomCodeRef.current = code;
     localStorage.setItem('gnosia_room_code', code);
     setRoomCode(code);
@@ -147,7 +176,7 @@ export const useGame = (initialRoomCode) => {
   // ─── WebSocket Connection ────────────────────────────────────────────────────
 
   /** Subscribe this client to the room + timer + chat + events topics once. */
-  const subscribeToState = useCallback((code, clientArg) => {
+  const subscribeToState = useCallback((code: string, clientArg?: GnosiaClient) => {
     const client = clientArg || stompClient.current;
     if (!client || !client.connected || !code) {
       console.warn('[Gnosia] Cannot subscribe, STOMP not connected');
@@ -172,7 +201,7 @@ export const useGame = (initialRoomCode) => {
 
     // Basic room state (players, phase, etc). Frames from a superseded (old)
     // transport are ignored so a reconnect can never be clobbered by stragglers.
-    const routeIfCurrent = (topic) => (frame) => {
+    const routeIfCurrent = (topic: ServerTopic) => (frame: IMessage) => {
       if (stompClient.current !== client) return;
       router.route(topic, frame.body);
     };
@@ -196,22 +225,22 @@ export const useGame = (initialRoomCode) => {
     });
   }, [router, resetConversation, playerId, identityKey]);
 
-  const subscribePrivate = useCallback((client) => {
-    const routePrivate = (frame) => {
+  const subscribePrivate = useCallback((client: GnosiaClient) => {
+    const routePrivate = (frame: IMessage) => {
       if (stompClient.current !== client) return;
       router.route('private', frame.body);
     };
     client.subscribe(`/topic/private/${identityKey}`, routePrivate);
   }, [router, identityKey]);
 
-  const disconnectCleanup = useCallback((client) => {
+  const disconnectCleanup = useCallback((client: GnosiaClient) => {
     // A transport drop kills every subscription (a fresh StompHandler is
     // created on reconnect), so the dedupe set must be cleared too.
-    if (client?.__gnosiaSubs) client.__gnosiaSubs.clear();
+    if (client.__gnosiaSubs) client.__gnosiaSubs.clear();
     setStompReady(false);
   }, []);
 
-  const connect = useCallback((pin) => {
+  const connect = useCallback((pin?: string) => {
     if (pin !== undefined) pinRef.current = pin;
     const gen = ++connectGenRef.current;
     // Deactivate any existing connection to avoid zombie STOMP clients.
@@ -222,14 +251,16 @@ export const useGame = (initialRoomCode) => {
     clearTimers();
 
     const client = new Client({
-      webSocketFactory: () => new SockJS(SOCKET_URL),
+      // SockJS is structurally compatible at runtime; bridged through `unknown`
+      // (not `any`) because its surface is not an IStompSocket by type.
+      webSocketFactory: () => new SockJS(SOCKET_URL) as unknown as IStompSocket,
       debug: () => {},
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
-    });
+    }) as GnosiaClient;
 
-    const isCurrent = () => gen === connectGenRef.current && stompClient.current === client;
+    const isCurrent = (): boolean => gen === connectGenRef.current && stompClient.current === client;
 
     client.onConnect = () => {
       if (!isCurrent()) {
@@ -242,7 +273,7 @@ export const useGame = (initialRoomCode) => {
       if (code) subscribeToState(code, client);
     };
 
-    client.onStompError = (frame) => {
+    client.onStompError = (frame: IFrame) => {
       console.error('[Gnosia] STOMP error:', frame.headers['message'], frame.body);
       if (isCurrent()) setStompReady(false);
     };
@@ -263,7 +294,7 @@ export const useGame = (initialRoomCode) => {
 
   // ─── WebRTC ──────────────────────────────────────────────────────────────────
 
-  const connectToMedia = useCallback(async () => {
+  const connectToMedia = useCallback(async (): Promise<MediaStream | undefined> => {
     try {
       // Stop any previous stream to avoid orphaned tracks
       if (userStream.current) {
@@ -278,6 +309,7 @@ export const useGame = (initialRoomCode) => {
       return stream;
     } catch (err) {
       console.error('[Gnosia] Media access error:', err);
+      return undefined;
     }
   }, []);
 
@@ -291,7 +323,7 @@ export const useGame = (initialRoomCode) => {
         if (stompClient.current?.connected && roomCodeRef.current) {
           stompClient.current.publish({
             destination: `/app/room/${roomCodeRef.current}/signal`,
-            body: JSON.stringify({ signal, targetId }),
+            body: JSON.stringify({ signal, targetId } satisfies SignalSendPayload),
           });
         }
       },
@@ -365,7 +397,7 @@ export const useGame = (initialRoomCode) => {
 
   // ─── Game Actions (all use @stomp/stompjs publish API) ──────────────────────
 
-  const publish = useCallback((path, body) => {
+  const publish = useCallback((path: string, body: unknown) => {
     if (stompClient.current?.connected && roomCodeRef.current) {
       stompClient.current.publish({
         destination: `/app/room/${roomCodeRef.current}/${path}`,
@@ -374,33 +406,33 @@ export const useGame = (initialRoomCode) => {
     }
   }, []);
 
-  const sendMessage = useCallback((content) => {
+  const sendMessage = useCallback((content: string) => {
     const myPlayer = roomRef.current?.players?.find(p => p.id === playerId);
-    publish('chat', { senderId: playerId, senderName: myPlayer?.name ?? 'Crew', content });
+    publish('chat', { senderId: playerId, senderName: myPlayer?.name ?? 'Crew', content } satisfies ChatSendPayload);
   }, [publish, playerId]);
 
-  const vote       = useCallback((targetId) => publish('vote',        { voterId: playerId, targetId }), [publish, playerId]);
-  const scan       = useCallback((targetId) => publish('scan',        { scannerId: playerId, targetId }), [publish, playerId]);
-  const protect    = useCallback((targetId) => publish('protect',     { gaId: playerId, targetId }), [publish, playerId]);
-  const doctorCheck = useCallback((targetId) => publish('doctorCheck', { doctorId: playerId, targetId }), [publish, playerId]);
-  const kill       = useCallback((targetId) => publish('kill',        { voterId: playerId, targetId }), [publish, playerId]);
-  const sendGnosiaChat = useCallback((content) => publish('gnosia-chat', { senderId: playerId, content }), [publish, playerId]);
-  const sendDm = useCallback((targetId, content) => {
+  const vote       = useCallback((targetId: string) => publish('vote',        { voterId: playerId, targetId } satisfies VoteSendPayload), [publish, playerId]);
+  const scan       = useCallback((targetId: string) => publish('scan',        { scannerId: playerId, targetId } satisfies ScanSendPayload), [publish, playerId]);
+  const protect    = useCallback((targetId: string) => publish('protect',     { gaId: playerId, targetId } satisfies ProtectSendPayload), [publish, playerId]);
+  const doctorCheck = useCallback((targetId: string) => publish('doctorCheck', { doctorId: playerId, targetId } satisfies DoctorCheckSendPayload), [publish, playerId]);
+  const kill       = useCallback((targetId: string) => publish('kill',        { voterId: playerId, targetId } satisfies KillSendPayload), [publish, playerId]);
+  const sendGnosiaChat = useCallback((content: string) => publish('gnosia-chat', { senderId: playerId, content } satisfies GnosiaChatSendPayload), [publish, playerId]);
+  const sendDm = useCallback((targetId: string, content: string) => {
     if (stompClient.current?.connected && roomCodeRef.current) {
       stompClient.current.publish({
         destination: `/app/room/${roomCodeRef.current}/dm`,
-        body: JSON.stringify({ senderId: playerId, targetId, content }),
+        body: JSON.stringify({ senderId: playerId, targetId, content } satisfies DmSendPayload),
       });
     }
   }, [playerId]);
 
   const startGame = useCallback(() => publish('start', {}), [publish]);
 
-  const createRoom = useCallback((roomCodeStr, participants, pin) => {
+  const createRoom = useCallback((roomCodeStr: string, participants: string[], pin: string) => {
     if (stompClient.current?.connected && roomCodeRef.current) {
       stompClient.current.publish({
         destination: `/app/room/create`,
-        body: JSON.stringify({ playerId, channelKey: identityKey, roomCode: roomCodeStr, participants, pin }),
+        body: JSON.stringify({ playerId, channelKey: identityKey, roomCode: roomCodeStr, participants, pin } satisfies RoomCreatePayload),
       });
     }
   }, [playerId, identityKey]);

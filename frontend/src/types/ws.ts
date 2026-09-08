@@ -68,9 +68,12 @@ export type ServerEvent =
 /** True when a room frame carries the winning state. */
 export const isGameOverRoom = (room: Room): boolean => room.gameState.phase === 'GAME_OVER';
 
-/** The normalized countdown slice (payload of TimerUpdateEvent). */
+/**
+ * The normalized countdown slice (payload of TimerUpdateEvent). `phase` is
+ * null before the first room/timer frame so the hook's initial state is honest.
+ */
 export interface TimerTick {
-  phase: Phase;
+  phase: Phase | null;
   remainingTimeSeconds: number;
 }
 
