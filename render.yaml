@@ -1,0 +1,66 @@
+# Render blueprint for Gnosia — two services:
+#   1. gnosia-backend: the Spring Boot WebSocket backend (Docker).
+#   2. gnosia-frontend: the Vite production build (static site).
+#
+# Steps after deploy:
+#   - Replace CORS_ALLOWED_ORIGINS below with the browser origin(s) that may
+#     connect (comma-separated). The backend REFUSES to start in `prod` without it.
+#   - Set the static service's VITE_BACKEND_URL to the backend's public URL once
+#     the backend service is up (https://<backend>.onrender.com/game-ws).
+#   - Never put TURN/microservice secrets here: they are baked into the public
+#     client bundle and must use ephemeral credentials (see frontend/.env.example).
+
+services:
+  - type: web
+    name: gnosia-backend
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      # Explicit browser-origin allow-list. No wildcards are accepted.
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://gnosia.example.com
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: LOG_LEVEL
+        value: INFO
+
+  - type: web
+    name: gnosia-frontend
+    runtime: static
+    plan: starter
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    publishPath: ./dist
+    autoDeploy: true
+    envVars:
+      # Set to the gnosia-backend service URL after the backend is deployed.
+      - key: VITE_BACKEND_URL
+        value: https://gnosia-backend.onrender.com/game-ws
+    routes:
+      - type: rewrite
+        source: /.*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self' https: wss: ws:; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+      - path: /*
+        name: Strict-Transport-Security
+        value: "max-age=63072000; includeSubDomains"
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: Permissions-Policy
+        value: "camera=(self), microphone=(self), display-capture=(self), gamepad=(self)"

@@ -314,7 +314,7 @@ public class GameController {
         messagingTemplate.convertAndSend(actor.privateTopic(),
             Map.of("type", "SCAN_RESULT", "targetId", target.getId(), "result", result));
         room.getGameState().getPlayerActionDone().put(scanner.getId(), "SCANNED");
-        log.info("[SCAN] Result sent to {}: {}", scanner.getName(), result);
+        log.info("[SCAN] Result delivered to {}", scanner.getName());
         gameService.broadcastState(room);
     }
 
@@ -341,7 +341,7 @@ public class GameController {
         messagingTemplate.convertAndSend(actor.privateTopic(),
             Map.of("type", "DOCTOR_CHECK_RESULT", "targetId", target.getId(), "result", result));
         room.getGameState().getPlayerActionDone().put(doctor.getId(), "DOCTOR_CHECKED");
-        log.info("[DOCTOR] Result sent to {}: {}", doctor.getName(), result);
+        log.info("[DOCTOR] Result delivered to {}", doctor.getName());
         gameService.broadcastState(room);
     }
 

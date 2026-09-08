@@ -74,11 +74,13 @@ export class MeshPeerManager {
         credential: import.meta.env.VITE_TURN_CREDENTIAL,
       };
       servers.push(turn);
-      if (turnUrl.includes(':80')) {
-        servers.push({ ...turn, urls: turnUrl.replace(':80', ':80?transport=tcp') });
-      }
-      if (turnUrl.includes(':443')) {
-        servers.push({ ...turn, urls: turnUrl.replace(':443', ':443?transport=tcp') });
+      // Prefer TLS-relayed media: a `turns:` offer is encrypted end to end and
+      // works through firewalls that drop UDP/TCP on 3478. For a `turn:` server on
+      // :443, add the `turns:` twin so the browser can negotiate TLS. The raw
+      // :80 TCP variant is deliberately NOT offered — unencrypted relay transport
+      // should never be the fallback for real media.
+      if (turnUrl.startsWith('turn:') && turnUrl.includes(':443')) {
+        servers.push({ ...turn, urls: turnUrl.replace('turn:', 'turns:') });
       }
     }
     return servers;

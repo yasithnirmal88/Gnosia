@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <!-- Human-readable console for local development and the default profile. -->
+  <springProfile name="!prod &amp; !staging">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] [%X{requestId:-}] %logger{36} - %msg%n</pattern>
+      </encoder>
+    </appender>
+    <root level="${LOG_LEVEL:-INFO}">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+  <!-- Structured JSON for production/staging: parseable fields, requestId MDC,
+       timestamps written as ISO-8601 with the active profile tagged per event. -->
+  <springProfile name="prod | staging">
+    <springProperty scope="context" name="activeProfile" source="spring.profiles.active"
+                    defaultValue="unknown"/>
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <customFields>{"service":"gonosia-backend","env":"${activeProfile}"}</customFields>
+        <includeMdc>true</includeMdc>
+      </encoder>
+    </appender>
+    <root level="${LOG_LEVEL:-INFO}">
+      <appender-ref ref="JSON"/>
+    </root>
+  </springProfile>
+
+</configuration>

@@ -222,6 +222,8 @@ public class ChatController {
                     }
                 });
 
-        log.info("[GNOSIA-CHAT] {} in room {}: {}", sender.getName(), roomCode, content);
+        // Deliberately no message content in the log line — gnosia chat is private
+        // between wolves and must never land in server logs.
+        log.info("[GNOSIA-CHAT] {} in room {} sent a message", sender.getName(), roomCode);
     }
 }
