@@ -89,7 +89,7 @@ export interface RoomCreatePayload {
   playerId: string;
   channelKey: string;
   roomCode?: string | null;
-  participants: string[];
+  participants: number;
   pin: string;
 }
 

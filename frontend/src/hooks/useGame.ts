@@ -428,8 +428,8 @@ export const useGame = (initialRoomCode: string) => {
 
   const startGame = useCallback(() => publish('start', {}), [publish]);
 
-  const createRoom = useCallback((roomCodeStr: string, participants: string[], pin: string) => {
-    if (stompClient.current?.connected && roomCodeRef.current) {
+  const createRoom = useCallback((roomCodeStr: string, participants: number, pin: string) => {
+    if (stompClient.current?.connected) {
       stompClient.current.publish({
         destination: `/app/room/create`,
         body: JSON.stringify({ playerId, channelKey: identityKey, roomCode: roomCodeStr, participants, pin } satisfies RoomCreatePayload),

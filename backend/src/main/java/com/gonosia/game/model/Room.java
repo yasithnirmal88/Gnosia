@@ -83,7 +83,10 @@ public class Room {
     public void setRoomCode(String roomCode) { this.roomCode = roomCode; }
 
     public List<Player> getPlayers() { return players; }
-    public void setPlayers(List<Player> players) { this.players = players; }
+    public void setPlayers(List<Player> players) {
+        this.players = players != null ? new java.util.concurrent.CopyOnWriteArrayList<>(players)
+                : new java.util.concurrent.CopyOnWriteArrayList<>();
+    }
 
     public GameState getGameState() { return gameState; }
     public void setGameState(GameState gameState) { this.gameState = gameState; }

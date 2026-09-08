@@ -82,6 +82,56 @@ describe('messageRouter', () => {
     expect(handlers.onRoom).not.toHaveBeenCalled()
   })
 
+  it('routes a real backend room frame (explicit null roles/winner/analytics)', () => {
+    // Captured verbatim from a live LOBBY broadcast (Jackson emits role:null).
+    const wire = {
+      roomCode: 'P3SEWV',
+      players: [
+        {
+          id: 'c659a65a-f006-4f8a-a0b8-d3c54a898284',
+          name: 'Jonas',
+          avatar: '/images/Jonas.png',
+          role: null,
+          votedFor: null,
+          alive: true,
+          cryoslept: false,
+          connected: true,
+        },
+      ],
+      gameState: {
+        phase: 'LOBBY',
+        remainingTimeSeconds: 0,
+        currentVotes: {},
+        lastCryosleptPlayerId: null,
+        protectedPlayerId: null,
+        gnosiaTargetPlayerId: null,
+        lastRoleResults: {},
+        leviObservations: [],
+        behavioralInsights: {},
+        gnosiaVotes: {},
+        votingResults: {},
+        playerActionDone: {},
+        winner: null,
+        gnosiaStillOnboard: false,
+      },
+      analytics: null,
+      votingHistory: [],
+      config: {
+        maxPlayers: 5,
+        gnosiaCount: 0,
+        votingTimeSeconds: 60,
+        resultTimeSeconds: 20,
+        roleActionTimeSeconds: 0,
+        warpTimeSeconds: 90,
+        discussionTimeSeconds: 180,
+      },
+    }
+    route('room', wire)
+    expect(handlers.onRoom).toHaveBeenCalledTimes(1)
+    expect(handlers.onRoom!.mock.calls[0][0].gameState.phase).toBe('LOBBY')
+    expect(handlers.onRoom!.mock.calls[0][0].players[0].role).toBeNull()
+  })
+
   it('routes a valid timer frame', () => {
     route('timer', { phase: 'DISCUSSION', remainingTimeSeconds: 42 })
     expect(handlers.onTimer).toHaveBeenCalledWith({ phase: 'DISCUSSION', remainingTimeSeconds: 42 })

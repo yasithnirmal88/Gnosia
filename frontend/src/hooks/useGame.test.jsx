@@ -298,6 +298,23 @@ describe('useGame actions', () => {
     expect(destinations).toContain('/app/room/ABC123/kill')
   })
 
+  it('publishes room creation without an established room code', () => {
+    const { result } = renderHook(() => useGame(''))
+    act(() => result.current.connect('1234'))
+    act(() => result.current.createRoom('ABC123', 6, '1234'))
+    const c = clientLog.instances[0]
+
+    const created = c.published.find((p) => p.destination === '/app/room/create')
+    expect(created).toBeTruthy()
+    expect(JSON.parse(created.body)).toEqual({
+      playerId: 'player-1',
+      channelKey: 'test-key',
+      roomCode: 'ABC123',
+      participants: 6,
+      pin: '1234',
+    })
+  })
+
   it('sends DMs and gnosia chat to the room-scoped destinations', () => {
     const { result } = renderHook(() => useGame('ABC123'))
     act(() => result.current.connect(''))

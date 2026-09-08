@@ -4,20 +4,21 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class GameState {
     private Phase phase = Phase.LOBBY;
     private int remainingTimeSeconds;
-    private Map<String, String> currentVotes = new HashMap<>(); // SourcePlayerID -> TargetPlayerID
+    private Map<String, String> currentVotes = new ConcurrentHashMap<>(); // SourcePlayerID -> TargetPlayerID
     private String lastCryosleptPlayerId;
     private String protectedPlayerId;
     private String gnosiaTargetPlayerId;
-    private Map<String, String> lastRoleResults = new HashMap<>(); // PlayerID -> Results
+    private Map<String, String> lastRoleResults = new ConcurrentHashMap<>(); // PlayerID -> Results
     private List<String> leviObservations = new ArrayList<>(); // AI Narrator's insights
-    private Map<String, List<String>> behavioralInsights = new HashMap<>(); // e.g., "Frequent Partners" -> List of IDs
-    private Map<String, String> gnosiaVotes = new HashMap<>(); // GnosiaID -> TargetID (WARP phase consensus)
-    private Map<String, String> votingResults = new HashMap<>(); // VoterID -> TargetID (revealed results)
-    private Map<String, String> playerActionDone = new HashMap<>(); // playerId -> actionType (reconnect recovery)
+    private Map<String, List<String>> behavioralInsights = new ConcurrentHashMap<>(); // e.g., "Frequent Partners" -> List of IDs
+    private Map<String, String> gnosiaVotes = new ConcurrentHashMap<>(); // GnosiaID -> TargetID (WARP phase consensus)
+    private Map<String, String> votingResults = new ConcurrentHashMap<>(); // VoterID -> TargetID (revealed results)
+    private Map<String, String> playerActionDone = new ConcurrentHashMap<>(); // playerId -> actionType (reconnect recovery)
     private Role winner; // To store the game winner (HUMAN or GNOSIA)
     private boolean gnosiaStillOnboard;
 
@@ -39,7 +40,7 @@ public class GameState {
         if (currentVotes != null) {
             currentVotes.clear();
         } else {
-            currentVotes = new HashMap<>();
+            currentVotes = new ConcurrentHashMap<>();
         }
     }
 
@@ -51,7 +52,9 @@ public class GameState {
     public void setRemainingTimeSeconds(int remainingTimeSeconds) { this.remainingTimeSeconds = remainingTimeSeconds; }
 
     public Map<String, String> getCurrentVotes() { return currentVotes; }
-    public void setCurrentVotes(Map<String, String> currentVotes) { this.currentVotes = currentVotes; }
+    public void setCurrentVotes(Map<String, String> currentVotes) {
+        this.currentVotes = currentVotes != null ? new ConcurrentHashMap<>(currentVotes) : new ConcurrentHashMap<>();
+    }
 
     public String getLastCryosleptPlayerId() { return lastCryosleptPlayerId; }
     public void setLastCryosleptPlayerId(String lastCryosleptPlayerId) { 
@@ -86,7 +89,7 @@ public class GameState {
 
     public Map<String, String> getPlayerActionDone() { return playerActionDone; }
     public void setPlayerActionDone(Map<String, String> playerActionDone) { this.playerActionDone = playerActionDone; }
-    public void clearPlayerActionDone() { this.playerActionDone = new HashMap<>(); }
+    public void clearPlayerActionDone() { this.playerActionDone = new ConcurrentHashMap<>(); }
     
     public Role getWinner() { return winner; }
     public void setWinner(Role winner) { this.winner = winner; }

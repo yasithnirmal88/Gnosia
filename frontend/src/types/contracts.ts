@@ -37,8 +37,9 @@ export interface Player {
   name: string;
   /** "/images/{name}.png" */
   avatar?: string;
-  /** Only present for the viewer or when all roles are exposed (dead/cryoslept). */
-  role?: Role;
+  /** Only present for the viewer or when all roles are exposed (dead/cryoslept);
+   * the public wire shape also serializes an explicit `null`. */
+  role?: Role | null;
   alive: boolean;
   cryoslept?: boolean;
   votedFor?: string | null;

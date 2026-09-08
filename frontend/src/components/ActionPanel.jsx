@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { NAME_MAP } from '../constants';
 import './ActionPanel.css';
@@ -8,6 +8,7 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
         return sessionStorage.getItem('gnosia_action_done') === 'true';
     });
     const [selected, setSelected] = useState(null);
+    const prevPhaseRef = useRef(phase);
 
     // Reconnect recovery: restore action state from server
     useEffect(() => {
@@ -21,10 +22,15 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
         sessionStorage.setItem('gnosia_action_done', actionDone);
     }, [actionDone]);
 
+    // Reset action state when the phase actually changes — NOT on mount,
+    // otherwise reconnect recovery (server says actionDone=true) is wiped.
     useEffect(() => {
-        setActionDone(false);
-        setSelected(null);
-        sessionStorage.removeItem('gnosia_action_done');
+        if (prevPhaseRef.current !== phase) {
+            setActionDone(false);
+            setSelected(null);
+            sessionStorage.removeItem('gnosia_action_done');
+            prevPhaseRef.current = phase;
+        }
     }, [phase]);
 
     if (phase !== 'ROLE_ACTIONS' && phase !== 'WARP') return null;

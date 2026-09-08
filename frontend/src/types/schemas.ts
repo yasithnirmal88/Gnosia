@@ -24,13 +24,14 @@ export const roleSchema = z.enum(ROLES);
 export const phaseSchema = z.enum(PHASES);
 export const roleCheckResultSchema = z.enum(['GNOSIA', 'HUMAN']);
 
-/** PlayerResponse.java. `role` is optional: public frames hide it, only the
- * viewer (or all roles after death/cryosleep) receive it. */
+/** PlayerResponse.java. `role` is either omitted or explicitly null because
+ * public frames hide it; only the viewer (or all roles after death/cryosleep)
+ * receive a real value. */
 export const playerSchema: z.ZodType<Player> = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   avatar: z.string().optional(),
-  role: roleSchema.optional(),
+  role: roleSchema.nullable().optional(),
   alive: z.boolean(),
   cryoslept: z.boolean().optional(),
   votedFor: z.string().nullable().optional(),
@@ -160,7 +161,7 @@ export const privateFrameSchema = z.discriminatedUnion('type', [
   }).passthrough(),
   z.object({
     type: z.literal('PRIVATE_INFO'),
-    role: roleSchema,
+    role: roleSchema.nullable().optional(),
     actionDone: z.string().nullable().optional(),
     partners: z.array(z.string()).optional(),
   }).passthrough(),
