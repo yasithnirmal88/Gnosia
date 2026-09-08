@@ -52,7 +52,7 @@ export interface SignalEvent {
 }
 
 /** The end-of-game announcement is just a room frame in phase GAME_OVER. */
-export interface GameOverEvent extends RoomStateEvent {}
+export type GameOverEvent = RoomStateEvent;
 
 export type ServerEvent =
   | RoomStateEvent

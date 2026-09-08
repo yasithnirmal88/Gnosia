@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { NAME_MAP } from '../constants';
 import './ActionPanel.css';
 
-export default function ActionPanel({ phase, role, players, lastCryoId, onAction, actionResult, privateInfo, myId }) {
+export default function ActionPanel({ phase, role, players, onAction, actionResult, privateInfo, myId }) {
     const [actionDone, setActionDone] = useState(() => {
         return sessionStorage.getItem('gnosia_action_done') === 'true';
     });
@@ -215,7 +215,6 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
     // ══════════════════════════════════════════
     if (role === 'DOCTOR') {
         const targets = players.filter(p => p.cryoslept);
-        const DOC_COLOR = '#b19cd9'; // Medical purple
 
         return (
             <div style={{
@@ -365,7 +364,6 @@ export default function ActionPanel({ phase, role, players, lastCryoId, onAction
     // ══════════════════════════════════════════
     if (role === 'GUARDIAN_ANGEL') {
         const targets = players.filter(p => p.alive && p.id !== myId);
-        const GA_COLOR = '#4ade80';
 
         return (
             <div style={{

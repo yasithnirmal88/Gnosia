@@ -222,14 +222,14 @@ export class MeshPeerManager {
     }, delay);
   }
 
-  destroyPeer(targetId, entry, reason) {
+  destroyPeer(targetId, entry, _reason) {
     if (entry.stopping) return;
     entry.stopping = true;
     if (this.peers.get(targetId) === entry) this.peers.delete(targetId);
     this.onPeerRemoved?.(targetId);
     try {
       entry.peer.destroy();
-    } catch (err) {
+    } catch (_err) {
       // simple-peer already stopped.
     }
   }

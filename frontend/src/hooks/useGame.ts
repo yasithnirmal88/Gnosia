@@ -32,8 +32,9 @@ import type {
   TimerTick,
   VoteSendPayload,
 } from '../types/ws';
+import { backendUrl } from '../config/endpoints';
 
-const SOCKET_URL: string = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/game-ws';
+const SOCKET_URL: string = backendUrl();
 
 /**
  * @stomp/stompjs `Client` extended with the module-private subscription dedupe

@@ -20,19 +20,6 @@ const AnalyticsDashboard = ({ room }) => {
         return Object.entries(countMap).map(([name, count]) => ({ name, count }));
     };
 
-    // Cumulative Suspicion Heatmap
-    const getSuspicionData = () => {
-        const suspicion = {};
-        players.forEach(p => suspicion[p.name] = 0);
-        history.forEach(round => {
-            Object.values(round).forEach(targetId => {
-                const player = players.find(p => p.id === targetId);
-                if (player) suspicion[player.name]++;
-            });
-        });
-        return Object.entries(suspicion).map(([name, total]) => ({ name, total }));
-    };
-
     return (
         <motion.div 
             initial={{ opacity: 0, y: 20 }}

@@ -47,6 +47,19 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
       </plugin>
+      <plugin>
+        <groupId>org.owasp</groupId>
+        <artifactId>dependency-check-maven</artifactId>
+        <version>10.0.4</version>
+        <configuration>
+          <formats>
+            <format>HTML</format>
+          </formats>
+          <!-- Fail the build on critical vulnerabilities (CVSS >= 9.0).
+               Override per-run: -Ddependency-check.failBuildOnCVSS=7 -->
+          <failBuildOnCVSS>9</failBuildOnCVSS>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 </project>

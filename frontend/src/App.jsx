@@ -12,6 +12,7 @@ import LandingPage from './components/LandingPage';
 import CreateRoom from './components/CreateRoom';
 import VotingResults from './components/VotingResults';
 import ActionPanel from './components/ActionPanel';
+import { backendUrl } from './config/endpoints';
 
 const MemoVoiceCommsOverlay = memo(VoiceCommsOverlay);
 const MemoVotingResults = memo(VotingResults);
@@ -20,7 +21,7 @@ const MemoActionPanel = memo(ActionPanel);
 const App = () => {
     const [isJoined, setIsJoined] = useState(false);
     const [roomCodeInput, setRoomCodeInput] = useState('');
-    const [showAnalytics, setShowAnalytics] = useState(false);
+    const [showAnalytics] = useState(false);
     const [inMeeting, setInMeeting] = useState(false);
     const [localMuted, setLocalMuted] = useState(false);
     const [globalVolume, setGlobalVolume] = useState(1);
@@ -39,7 +40,6 @@ const App = () => {
         timer,
         connect,
         connectToMedia,
-        streamReady,
         streams,
         sendMessage,
         vote,
@@ -52,7 +52,6 @@ const App = () => {
         playerId,
         joinError,
         actionError,
-        setActionError,
         setJoinError,
         subscribeToState,
         stompReady,
@@ -110,7 +109,7 @@ const App = () => {
             const botId = 'DEV-BOT-' + Math.random().toString(36).slice(2, 12);
             const botKey = 'dev-bot-key-' + Math.random().toString(36).slice(2, 12);
             const client = new Client({
-                webSocketFactory: () => new SockJS(import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/game-ws'),
+                webSocketFactory: () => new SockJS(backendUrl()),
                 debug: () => {},
             });
             client.onConnect = () => {
@@ -236,13 +235,11 @@ const App = () => {
 
     const currentPhase = room.gameState.phase;
     const isWarp = currentPhase === 'WARP';
-    const isGnosia = privateInfo?.role === 'GNOSIA';
     const isDead = room.players.find(p => p.id === playerId)?.alive === false;
     const hasVoted = currentPhase === 'VOTING' && !!room?.gameState?.currentVotes?.[playerId];
 
     const isGameOver = currentPhase === 'GAME_OVER';
     const isGnosiaWin = room.gameState.winner === 'GNOSIA';
-    const isHumanWin = room.gameState.winner === 'HUMAN';
     const containerClass = isGameOver 
         ? (isGnosiaWin ? 'app-container gnosia-win' : 'app-container human-win') 
         : `app-container ${isWarp ? 'warp-mode' : ''}`;

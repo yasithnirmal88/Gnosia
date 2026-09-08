@@ -46,7 +46,6 @@ export default function MeetingRoom({
   const isGnosia = role === 'GNOSIA';
   const me = players.find(p => p.name === playerName);
   const amIDead = me?.alive === false; // true if cryoslept OR killed
-  const isSpectator = amIDead; // alias for audio logic
 
   // Dead players (spectators): mic is muted (can't speak), but they CAN hear.
   // WARP phase: only alive Gnosia can hear Gnosia channel.
@@ -115,7 +114,7 @@ export default function MeetingRoom({
     if (!confirmModal) return;
     setVoteLocked(true);
     setSelectedForVote(confirmModal.id);
-    onVote && onVote(confirmModal.id);
+    if (onVote) onVote(confirmModal.id);
     setConfirmModal(null);
   };
 
@@ -157,19 +156,6 @@ export default function MeetingRoom({
           const isSpeaking = hasStream && canHear(p);
           const votesForThisPlayer = Object.values(votes).filter(id => id === p.id).length;
           const isMe = p.id === playerId;
-          const isPartner = privateInfo?.role === 'GNOSIA' && privateInfo?.partners?.includes(p.id);
-
-          let roleIcon = null;
-          let iconClass = 'role-icon';
-          if (isMe) {
-             if (privateInfo?.role === 'ENGINEER') roleIcon = '🔎';
-             if (privateInfo?.role === 'DOCTOR') roleIcon = '🩺';
-             if (privateInfo?.role === 'GUARDIAN_ANGEL') roleIcon = '👼';
-             if (privateInfo?.role === 'GNOSIA') { roleIcon = '🐺'; iconClass += ' gnosia'; }
-           } else if (isPartner) {
-              roleIcon = '🐺';
-              iconClass += ' gnosia';
-           }
 
           const cardStateClass = p.cryoslept ? 'frozen' : (!p.alive ? 'killed' : '');
           const idNum = String(idx + 1).padStart(3, '0');
@@ -468,7 +454,7 @@ export default function MeetingRoom({
             disabled={!warpCouncilTarget}
             onClick={() => {
               if (warpCouncilTarget) {
-                onKill && onKill(warpCouncilTarget.id);
+                if (onKill) onKill(warpCouncilTarget.id);
               }
             }}
           >
@@ -604,7 +590,7 @@ export default function MeetingRoom({
                 onChange={(e) => setPublicChatInput(e.target.value)}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter' && publicChatInput.trim().length > 0) {
-                        sendMessage && sendMessage(publicChatInput.trim());
+                        if (sendMessage) sendMessage(publicChatInput.trim());
                         setPublicChatInput("");
                     }
                 }}
@@ -615,7 +601,7 @@ export default function MeetingRoom({
             <button 
                 onClick={() => { 
                     if (publicChatInput.trim().length > 0) {
-                       sendMessage && sendMessage(publicChatInput.trim());
+                       if (sendMessage) sendMessage(publicChatInput.trim());
                        setPublicChatInput(""); 
                     }
                 }} 
@@ -667,7 +653,7 @@ export default function MeetingRoom({
                   onChange={(e) => setGnosiaChatInput(e.target.value)}
                   onKeyDown={(e) => {
                       if (e.key === 'Enter' && gnosiaChatInput.trim().length > 0) {
-                          sendGnosiaChat && sendGnosiaChat(gnosiaChatInput.trim());
+                          if (sendGnosiaChat) sendGnosiaChat(gnosiaChatInput.trim());
                           setGnosiaChatInput("");
                       }
                   }}
@@ -677,7 +663,7 @@ export default function MeetingRoom({
               <button 
                   onClick={() => { 
                       if (gnosiaChatInput.trim().length > 0) {
-                         sendGnosiaChat && sendGnosiaChat(gnosiaChatInput.trim());
+                         if (sendGnosiaChat) sendGnosiaChat(gnosiaChatInput.trim());
                          setGnosiaChatInput(""); 
                       }
                   }} 

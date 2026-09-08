@@ -1,8 +1,9 @@
 // Levi — Ship AI Voice System
 // Filenames match exactly: backend/src/main/resources/static/audio/levi/
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/game-ws';
-const BASE = `${backendUrl.replace('/game-ws', '')}/audio/levi`;
+import { backendUrl } from '../config/endpoints';
+
+const BASE = `${backendUrl().replace('/game-ws', '')}/audio/levi`;
 
 // ─── Lookup Tables ────────────────────────────────────────────────────────────
 
@@ -120,7 +121,7 @@ class LeviAudioEngine {
   }
 
   // Background Music Loop logic (if needed for backward compatibility)
-  playBackground(type) {
+  playBackground(/* legacy: loop handles are unused */) {
     if (this.currentLoop) {
       this.currentLoop.pause();
       this.currentLoop.currentTime = 0;

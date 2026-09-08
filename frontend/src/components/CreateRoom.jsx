@@ -23,7 +23,7 @@ export default function CreateRoom({ onSave, onBack }) {
     setSaved(true);
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      onSave && onSave({ roomCode, participants, pin });
+      if (onSave) onSave({ roomCode, participants, pin });
     }, 800);
   };
 

@@ -10,7 +10,7 @@ export default function VotingResults({ players, currentVotes, phase, lastCryosl
   const tallies = {};
   players.forEach(p => tallies[p.id] = 0);
   Object.values(currentVotes || {}).forEach(targetId => {
-    if (tallies.hasOwnProperty(targetId)) tallies[targetId]++;
+    if (Object.hasOwn(tallies, targetId)) tallies[targetId]++;
   });
 
   if (isExecution) {
