@@ -145,11 +145,13 @@ GHCR cache). An optional webhook deploy job runs only if
 - Secrets (TURN creds, webhook keys) stay in the Render dashboard secret store.
 
 ### Vercel (`vercel.json`)
-- Frontend only. `rootDirectory: frontend`, `installCommand npm ci`, SPA
-  fallback rewrite, security headers on all responses. Set `VITE_BACKEND_URL`
-  (`https://…:443/game-ws`) in the project's environment or leave unset for a
-  same-origin setup; Vercel does not proxy WebSockets, so a backend origin must
-  be given for any cross-origin connection.
+- Frontend only. Root Directory set to `frontend` in the Vercel project
+  dashboard (the `vercel.json` schema rejects a top-level `rootDirectory`),
+  `installCommand npm ci`, SPA fallback rewrite, security headers on all
+  responses. Set `VITE_BACKEND_URL` (`https://…:443/game-ws`) in the project's
+  environment or leave unset for a same-origin setup; Vercel does not proxy
+  WebSockets, so a backend origin must be given for any cross-origin
+  connection.
 
 ### Production-like local smoke (how this was verified)
 `mvn package` → `SPRING_PROFILES_ACTIVE=prod CORS_ALLOWED_ORIGINS=https://…:18080 java -jar …`
