@@ -5,6 +5,8 @@ export default function LandingPage({ onPlay, onCreateRoom }) {
   const [glitch, setGlitch]   = useState(false);
   const [loaded, setLoaded]   = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [showNews, setShowNews] = useState(false);
   const glitchTimerRef = useRef(null);
 
   // Fade-in on mount
@@ -30,7 +32,7 @@ export default function LandingPage({ onPlay, onCreateRoom }) {
   }, []);
 
   return (
-    <div style={S.root}>
+    <div style={S.root} className="g-root">
       {/* Overlay effects */}
       <div className="g-scanlines" />
       <div className="g-noise"     />
@@ -44,10 +46,10 @@ export default function LandingPage({ onPlay, onCreateRoom }) {
       </div>
 
       {/* Main layout */}
-      <div style={S.layout}>
+      <div style={S.layout} className="g-layout">
 
         {/* ── LEFT PANEL ── */}
-        <div style={S.leftPanel}>
+        <div style={S.leftPanel} className="g-left">
 
           {/* Sub-label */}
           <div className={`g-fadein ${loaded ? "g-fadein-go" : ""}`} style={{ animationDelay: ".05s" }}>
@@ -88,14 +90,14 @@ export default function LandingPage({ onPlay, onCreateRoom }) {
           {/* Footer links */}
           <div className={`g-fadein ${loaded ? "g-fadein-go" : ""}`}
                style={{ animationDelay: ".6s", display: "flex", gap: 28, marginTop: 8 }}>
-            <span className="g-link">ABOUT</span>
+            <span className="g-link" onClick={() => setShowAbout(true)}>ABOUT</span>
             <span className="g-link" onClick={() => setShowHowToPlay(true)}>HOW TO PLAY</span>
-            <span className="g-link">NEWS</span>
+            <span className="g-link" onClick={() => setShowNews(true)}>NEWS</span>
           </div>
         </div>
 
         {/* ── RIGHT PANEL — character art ── */}
-        <div style={S.rightPanel}>
+        <div style={S.rightPanel} className="g-right">
           <div style={S.charFrame} className="g-pulse-border">
             {/* Corner brackets */}
             <span className="g-corner g-tl" /><span className="g-corner g-tr" />
@@ -182,8 +184,77 @@ export default function LandingPage({ onPlay, onCreateRoom }) {
                   <li><span style={{color:"#c084fc"}}>Guardian Angel</span> secretly protects one player from a Gnosia attack.</li>
                 </ul>
               </p>
+              <br/>
+              <p>
+                <strong style={{color:"#00fff5"}}>4. WIN CONDITIONS:</strong><br/>
+                <ul style={{marginLeft:"20px", marginTop:"10px", lineHeight: "1.8"}}>
+                  <li><span style={{color:"#00ff78"}}>HUMANS WIN</span> when every Gnosia is eliminated (voted into Cold Sleep or killed).</li>
+                  <li><span style={{color:"#ff0040"}}>GNOSIA WIN</span> when they outnumber the surviving humans after any elimination.</li>
+                  <li>The loop repeats — Discussion → Voting → Warp — until one side meets its win condition.</li>
+                </ul>
+              </p>
+              <br/>
+              <p>
+                <strong style={{color:"#00fff5"}}>5. ROLE QUICK REFERENCE:</strong><br/>
+                <ul style={{marginLeft:"20px", marginTop:"10px", lineHeight: "1.8"}}>
+                  <li><span style={{color:"#ffffff"}}>HUMAN</span> — a normal crew member. No special power, so debate and deduction are your only weapons.</li>
+                  <li><span style={{color:"#4ade80"}}>ENGINEER</span> — scans one crew member during the warp to learn if they are Human or Gnosia.</li>
+                  <li><span style={{color:"#f87171"}}>DOCTOR</span> — checks the most recently cold-slept player to reveal their true alignment.</li>
+                  <li><span style={{color:"#c084fc"}}>GUARDIAN ANGEL</span> — shields one crew member per warp from a Gnosia kill.</li>
+                  <li><span style={{color:"#ff0040"}}>GNOSIA</span> — blend in and talk your way out of suspicion. Eliminate one human every warp.</li>
+                </ul>
+              </p>
+              <br/>
+              <p>
+                <strong style={{color:"#00fff5"}}>6. PRIVATE ROOMS:</strong><br/>
+                Create a private room to play with friends. Share the room code and PIN, and the host can start the game once at least the minimum crew are aboard and every active member signals ready.
+              </p>
             </div>
             <button className="g-btn-close" onClick={() => setShowHowToPlay(false)}>CLOSE TERMINAL</button>
+          </div>
+        </div>
+      )}
+
+      {/* About Modal */}
+      {showAbout && (
+        <div className="g-modal-overlay" onClick={() => setShowAbout(false)}>
+          <div className="g-modal-content" onClick={e => e.stopPropagation()}>
+            <h2 className="g-modal-title">SYSTEM LOG // ABOUT GNOSIA</h2>
+            <div className="g-modal-body">
+              <p>
+                <strong style={{color:"#ff0040"}}>GNOSIA</strong> is a real-time multiplayer social deduction game played in the browser.
+                A shapeshifting virus has boarded the vessel NOVA-7 and is indistinguishable from the human crew.
+                Each cycle the crew debates, votes someone into Cold Sleep, and survives a warp — while hidden roles act in the dark.
+              </p>
+              <br/>
+              <p>
+                This web build is a fan-made adaptation of the anime-inspired social deduction experience. It runs the full
+                game loop — discussion, voting, night actions, and win detection — over a live WebSocket connection with
+                voice comms across peers, an AI narrator (LEVI), and per-game analytics.
+              </p>
+            </div>
+            <button className="g-btn-close" onClick={() => setShowAbout(false)}>CLOSE TERMINAL</button>
+          </div>
+        </div>
+      )}
+
+      {/* News Modal */}
+      {showNews && (
+        <div className="g-modal-overlay" onClick={() => setShowNews(false)}>
+          <div className="g-modal-content" onClick={e => e.stopPropagation()}>
+            <h2 className="g-modal-title">SIGNAL LOG // NEWS</h2>
+            <div className="g-modal-body">
+              <p style={{color:"#00fff5", marginBottom: 8}}>V2.0 — CREW READINESS OVERHAUL</p>
+              <ul style={{marginLeft:"20px", lineHeight: "1.9"}}>
+                <li>Full lobby: live crew roster with ready signals, host crown, and connection status.</li>
+                <li>Host-only departure — the game starts once the minimum crew are aboard and everyone is ready.</li>
+                <li>Room code and PIN sharing with a copy-invite button.</li>
+                <li>Leave Room support, with the host role passing to the next connected crew member.</li>
+                <li>Fixed a race that could leave a freshly created room stuck syncing instead of launching.</li>
+                <li>Responsive layout for smaller screens and improvements to the about/news/help terminals.</li>
+              </ul>
+            </div>
+            <button className="g-btn-close" onClick={() => setShowNews(false)}>CLOSE TERMINAL</button>
           </div>
         </div>
       )}
