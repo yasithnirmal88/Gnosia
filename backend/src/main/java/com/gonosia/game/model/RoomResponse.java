@@ -6,6 +6,8 @@ import java.util.stream.Collectors;
 
 public class RoomResponse {
     private String roomCode;
+    private String hostId;
+    private String pin;
     private List<PlayerResponse> players;
     private GameState gameState;
     private GameAnalytics analytics;
@@ -20,6 +22,8 @@ public class RoomResponse {
         
         RoomResponse r = new RoomResponse();
         r.setRoomCode(room.getRoomCode());
+        r.setHostId(room.getHostId());
+        r.setPin(room.getPin());
         r.setGameState(room.getGameState());
         r.setAnalytics(room.getAnalytics());
         r.setVotingHistory(room.getVotingHistory());
@@ -34,6 +38,12 @@ public class RoomResponse {
 
     public String getRoomCode() { return roomCode; }
     public void setRoomCode(String roomCode) { this.roomCode = roomCode; }
+
+    public String getHostId() { return hostId; }
+    public void setHostId(String hostId) { this.hostId = hostId; }
+
+    public String getPin() { return pin; }
+    public void setPin(String pin) { this.pin = pin; }
 
     public List<PlayerResponse> getPlayers() { return players; }
     public void setPlayers(List<PlayerResponse> players) { this.players = players; }

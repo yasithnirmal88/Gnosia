@@ -2,6 +2,7 @@ package com.gonosia.game.model;
 
 public class GameConfig {
     private int maxPlayers = 5;
+    private int minPlayers = 5;
     private int gnosiaCount = 0; // 0 means auto
 
     private static final int[] DISCUSSION_TIMES = { 0, 180, 300, 300, 300, 300 };
@@ -28,6 +29,9 @@ public class GameConfig {
 
     public int getMaxPlayers() { return maxPlayers; }
     public void setMaxPlayers(int maxPlayers) { this.maxPlayers = maxPlayers; }
+
+    public int getMinPlayers() { return Math.max(2, Math.min(minPlayers, maxPlayers)); }
+    public void setMinPlayers(int minPlayers) { this.minPlayers = Math.max(2, minPlayers); }
 
     public int getGnosiaCount() { return gnosiaCount; }
     public void setGnosiaCount(int gnosiaCount) { this.gnosiaCount = gnosiaCount; }

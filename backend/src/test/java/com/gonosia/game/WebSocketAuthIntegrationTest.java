@@ -510,16 +510,18 @@ class WebSocketAuthIntegrationTest {
     }
 
     @Test
-    void testPinNotExposedOnPublicState() throws Exception {
+    void testPinExposedToRoomMembers() throws Exception {
         String code = "PNL1";
         PassThroughStomp a = newClient("pnl-a", "key-pnl-a001");
         a.subscribeRoom(code);
         createRoom(a, code, "9999");
 
-        // The room state broadcast must never contain a pin
+        // The lobby broadcast carries the PIN so the host can share the invite.
+        // Only room members can subscribe to the room topic, so this adds no
+        // attack surface: joiners already have to present the PIN.
         Map<String, Object> state = a.pollForRoomState();
         assertThat(state).isNotNull();
-        assertThat(state).doesNotContainKey("pin");
+        assertThat(state.get("pin")).isEqualTo("9999");
         assertThat(state.get("roomCode")).isEqualTo(code);
     }
 

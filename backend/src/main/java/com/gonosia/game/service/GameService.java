@@ -39,6 +39,7 @@ public class GameService {
             case LOBBY:
                 // Starting game — first meeting
                 roomManager.markActive(room);
+                room.getPlayers().forEach(p -> p.setReady(false));
                 gameLogicService.assignRoles(room);
                 room.incrementMeetingRound(); // Round 1
                 state.setPhase(Phase.INTRO);

@@ -1,5 +1,6 @@
 package com.gonosia.game.security;
 
+import com.gonosia.game.model.GameConfig;
 import com.gonosia.game.model.Phase;
 import com.gonosia.game.model.Player;
 import com.gonosia.game.model.Role;
@@ -30,14 +31,32 @@ import org.springframework.stereotype.Service;
 public class GameActionAuthorizationService {
 
     // ─── START ────────────────────────────────────────────────────────────
-    // Any room member may start, but only from the lobby and only once the
-    // vessel is full. A started game can never leave the lobby again.
+    // Only the host may depart. Departure is allowed when the vessel is full
+    // (existing behaviour) OR when the minimum crew has boarded and every
+    // connected crew member has signalled ready. A started game can never
+    // return to the lobby.
     public Player requireCanStart(Room room, Player actor) {
         if (room.getGameState() == null || room.getGameState().getPhase() != Phase.LOBBY) {
             throw denied("START", "Game already started");
         }
-        if (room.getPlayers().size() < room.getConfig().getMaxPlayers()) {
+        String hostId = room.getHostId();
+        if (hostId != null && !hostId.equals(actor.getId())) {
+            throw denied("START", "Only the host can depart");
+        }
+        GameConfig config = room.getConfig();
+        int size = room.getPlayers().size();
+        boolean atCapacity = size >= config.getMaxPlayers();
+        if (atCapacity) {
+            return actor;
+        }
+        if (size < config.getMinPlayers()) {
             throw denied("START", "Not enough crew to depart");
+        }
+        boolean allReady = room.getPlayers().stream()
+                .filter(Player::isConnected)
+                .allMatch(Player::isReady);
+        if (!allReady) {
+            throw denied("START", "Waiting for every crew member to signal ready");
         }
         return actor;
     }

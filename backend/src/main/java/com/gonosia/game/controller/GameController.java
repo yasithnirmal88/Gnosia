@@ -148,6 +148,7 @@ public class GameController {
         player.setAvatar("/images/" + randomName + ".png");
         player.setConnected(true);
         player.setAlive(true);
+        room.setHostId(playerId);
         room.addPlayer(player);
 
         messagingTemplate.convertAndSend("/topic/private/" + channelKey,
@@ -261,6 +262,62 @@ public class GameController {
         }
 
         gameService.transitionPhase(room);
+    }
+
+    @MessageMapping("/room/{roomCode}/ready")
+    public void setReady(@DestinationVariable("roomCode") String roomCode, @Payload(required = false) Map<String, String> payload,
+            SimpMessageHeaderAccessor headerAccessor) {
+        Room room = roomManager.getRoom(roomCode);
+        if (room == null) return;
+        if (room.getGameState() == null || room.getGameState().getPhase() != Phase.LOBBY) return;
+
+        SessionIdentityService.Actor actor = requireRoomMembership(headerAccessor, roomCode, room);
+        if (actor == null) return;
+        if (!rateLimitsAllow(actor, roomCode, headerAccessor)) {
+            log.warn("[READY] {} rate limited", actor.player().getId());
+            return;
+        }
+
+        boolean ready = payload != null && Boolean.parseBoolean(payload.getOrDefault("ready", "false"));
+        actor.player().setReady(ready);
+        log.info("{} set ready={} in {}", actor.player().getName(), ready, roomCode);
+        gameService.broadcastState(room);
+    }
+
+    @MessageMapping("/room/{roomCode}/leave")
+    public void leaveRoom(@DestinationVariable("roomCode") String roomCode, SimpMessageHeaderAccessor headerAccessor) {
+        Room room = roomManager.getRoom(roomCode);
+        if (room == null) return;
+
+        String sessionId = sessionIdOf(headerAccessor);
+        SessionIdentityService.Actor actor = identityService.requireRoomMembership(sessionId, room);
+        if (actor == null) return;
+        if (!rateLimitsAllow(actor, roomCode, headerAccessor)) {
+            log.warn("[LEAVE] {} rate limited", actor.player().getId());
+            return;
+        }
+
+        String playerId = actor.player().getId();
+        log.info("{} left room {}", actor.player().getName(), roomCode);
+
+        if (sessionId != null) {
+            identityService.disconnect(sessionId);
+        }
+        room.removePlayer(playerId);
+
+        if (playerId.equals(room.getHostId())) {
+            room.setHostId(null);
+            room.getPlayers().stream().filter(Player::isConnected).findFirst()
+                .ifPresent(p -> room.setHostId(p.getId()));
+        }
+
+        if (room.getPlayers().isEmpty()) {
+            roomManager.removeRoom(roomCode);
+            identityService.releaseRoom(roomCode);
+            return;
+        }
+
+        gameService.broadcastState(room);
     }
 
     @MessageMapping("/room/{roomCode}/vote")

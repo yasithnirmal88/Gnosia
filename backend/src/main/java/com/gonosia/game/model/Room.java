@@ -8,6 +8,7 @@ import java.util.Map;
 
 public class Room {
     private String roomCode;
+    private String hostId;
     private List<Player> players = new CopyOnWriteArrayList<>();
     private GameState gameState;
     private GameConfig config = new GameConfig();
@@ -81,6 +82,9 @@ public class Room {
 
     public String getRoomCode() { return roomCode; }
     public void setRoomCode(String roomCode) { this.roomCode = roomCode; }
+
+    public String getHostId() { return hostId; }
+    public void setHostId(String hostId) { this.hostId = hostId; }
 
     public List<Player> getPlayers() { return players; }
     public void setPlayers(List<Player> players) {

@@ -9,6 +9,7 @@ public class PlayerResponse {
     private boolean isCryoslept;
     private String votedFor;
     private boolean isConnected;
+    private boolean ready;
 
     public PlayerResponse() {}
 
@@ -21,6 +22,7 @@ public class PlayerResponse {
         r.setCryoslept(p.isCryoslept());
         r.setVotedFor(p.getVotedFor());
         r.setConnected(p.isConnected());
+        r.setReady(p.isReady());
         if (showRole) {
             r.setRole(p.getRole());
         }
@@ -50,4 +52,7 @@ public class PlayerResponse {
 
     public boolean isConnected() { return isConnected; }
     public void setConnected(boolean connected) { isConnected = connected; }
+
+    public boolean isReady() { return ready; }
+    public void setReady(boolean ready) { this.ready = ready; }
 }

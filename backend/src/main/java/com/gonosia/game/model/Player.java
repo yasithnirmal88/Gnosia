@@ -9,10 +9,11 @@ public class Player {
     private boolean isCryoslept;
     private String votedFor;
     private boolean isConnected;
+    private boolean ready;
 
     public Player() {}
 
-    public Player(String id, String name, String avatar, Role role, boolean isAlive, boolean isCryoslept, String votedFor, boolean isConnected) {
+    public Player(String id, String name, String avatar, Role role, boolean isAlive, boolean isCryoslept, String votedFor, boolean isConnected, boolean ready) {
         this.id = id;
         this.name = name;
         this.avatar = avatar;
@@ -21,6 +22,7 @@ public class Player {
         this.isCryoslept = isCryoslept;
         this.votedFor = votedFor;
         this.isConnected = isConnected;
+        this.ready = ready;
     }
 
     public String getId() { return id; }
@@ -47,6 +49,9 @@ public class Player {
     public boolean isConnected() { return isConnected; }
     public void setConnected(boolean connected) { isConnected = connected; }
 
+    public boolean isReady() { return ready; }
+    public void setReady(boolean ready) { this.ready = ready; }
+
     public boolean isGnosia() {
         return this.role == Role.GNOSIA;
     }
@@ -62,6 +67,7 @@ public class Player {
         private boolean isCryoslept;
         private String votedFor;
         private boolean isConnected;
+        private boolean ready;
 
         public PlayerBuilder id(String id) { this.id = id; return this; }
         public PlayerBuilder name(String name) { this.name = name; return this; }
@@ -71,9 +77,10 @@ public class Player {
         public PlayerBuilder isCryoslept(boolean isCryoslept) { this.isCryoslept = isCryoslept; return this; }
         public PlayerBuilder votedFor(String votedFor) { this.votedFor = votedFor; return this; }
         public PlayerBuilder isConnected(boolean isConnected) { this.isConnected = isConnected; return this; }
+        public PlayerBuilder ready(boolean ready) { this.ready = ready; return this; }
         
         public Player build() {
-            return new Player(id, name, avatar, role, isAlive, isCryoslept, votedFor, isConnected);
+            return new Player(id, name, avatar, role, isAlive, isCryoslept, votedFor, isConnected, ready);
         }
     }
 }
