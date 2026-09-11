@@ -1242,6 +1242,42 @@
 }
 
 /* Mobile */
+/* ── Responsive shell ──────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .app-container { padding: 12px; }
+  .gnosia-header {
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+  }
+  .gnosia-logo { font-size: 16px; letter-spacing: 4px; }
+  .diamond-bullet { display: none; }
+  .phase-badge { font-size: 9px; padding: 6px 12px; letter-spacing: 2px; }
+  .timer-box { font-size: 16px; padding: 6px 14px; }
+  .ship-status { font-size: 9px; letter-spacing: 2px; }
+  .terminal-grid {
+    grid-template-columns: 1fr !important;
+    padding: 12px;
+    gap: 12px;
+  }
+  .levi-box { width: calc(100% - 24px); max-width: 480px; top: auto; bottom: 20px; flex-wrap: wrap; padding: 12px; }
+  .analytics-sidebar-overlay { max-width: 100%; }
+  .lobby-panel { max-width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .gnosia-header { flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 12px; }
+  .timer-box { margin-left: 0; font-size: 13px; }
+  .ship-status { white-space: nowrap; }
+  .lobby-container { padding: 12px; }
+  .lobby-card { padding: 18px; }
+  .lobby-header h1 { font-size: 2.4rem; }
+  .lobby-panel { padding: 14px; gap: 10px; }
+  .lobby-roster { max-height: 38vh; }
+}
+
 @media (max-width: 640px) {
   .lobby-panel { padding: 16px; gap: 12px; }
   .lobby-panel-header h2 { font-size: 14px; letter-spacing: 3px; }
