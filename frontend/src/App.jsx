@@ -66,6 +66,11 @@ const App = () => {
             if (pendingAction.type === 'JOIN') {
                 // Subscribe happens in onConnect auto-subscribe — skip duplicate
             } else if (pendingAction.type === 'CREATE') {
+                // Subscribe to the room topic BEFORE publishing create: the backend
+                // broadcasts the first ROOM_UPDATE immediately after ROOM_CREATED,
+                // so subscribing only in response to ROOM_CREATED would miss it and
+                // leave the host stuck on "Syncing with Station..." indefinitely.
+                subscribeToState(pendingAction.code);
                 createRoom(pendingAction.code, pendingAction.participants, pendingAction.pin);
                 setIsJoined(true);
             }
