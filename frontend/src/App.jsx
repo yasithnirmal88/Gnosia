@@ -12,6 +12,7 @@ import LandingPage from './components/LandingPage';
 import CreateRoom from './components/CreateRoom';
 import VotingResults from './components/VotingResults';
 import ActionPanel from './components/ActionPanel';
+import LobbyPanel from './components/LobbyPanel';
 import { backendUrl } from './config/endpoints';
 
 const MemoVoiceCommsOverlay = memo(VoiceCommsOverlay);
@@ -48,6 +49,8 @@ const App = () => {
         doctorCheck,
         kill,
         startGame,
+        setReady,
+        leaveRoom,
         createRoom,
         playerId,
         joinError,
@@ -106,6 +109,12 @@ const App = () => {
         if (privateInfo?.role === 'GUARDIAN_ANGEL') protect(id);
         if (privateInfo?.role === 'GNOSIA') kill(id);
     }, [privateInfo?.role, scan, doctorCheck, protect, kill]);
+
+    const handleLeaveRoom = useCallback(() => {
+        leaveRoom();
+        setIsJoined(false);
+        setPendingAction(null);
+    }, [leaveRoom]);
 
     const fillWithBots = () => {
         if (!room) return;
@@ -269,11 +278,6 @@ const App = () => {
                      `${Math.floor((timer.remainingTimeSeconds || room.gameState.remainingTimeSeconds || 0) / 60).toString().padStart(2, '0')}:${Math.floor((timer.remainingTimeSeconds || room.gameState.remainingTimeSeconds || 0) % 60).toString().padStart(2, '0')}`}
                 </div>
                 
-                {currentPhase === 'LOBBY' && room.config && room.players.length >= room.config.maxPlayers && (
-                    <button className="button-primary" style={{marginLeft: '20px', padding: '8px 20px', fontSize: '12px'}} onClick={() => startGame()}>
-                        COMMENCE
-                    </button>
-                )}
                 {import.meta.env.DEV && currentPhase === 'LOBBY' && room.config && room.players.length < room.config.maxPlayers && (
                     <div style={{marginLeft: '20px', fontSize: '12px', color: '#ff0040', fontWeight: 'bold'}}>
                         WAITING FOR CREW ({room.players.length}/{room.config.maxPlayers})
@@ -305,6 +309,18 @@ const App = () => {
 
             <div className="game-body">
                 <main className="player-grid terminal-grid">
+                    <AnimatePresence>
+                        {currentPhase === 'LOBBY' && (
+                            <LobbyPanel
+                                room={room}
+                                playerId={playerId}
+                                onReady={setReady}
+                                onStart={startGame}
+                                onLeave={handleLeaveRoom}
+                            />
+                        )}
+                    </AnimatePresence>
+
                     <AnimatePresence>
                         {(inMeeting || currentPhase === 'VOTING' || currentPhase === 'DISCUSSION' || currentPhase === 'WARP' || currentPhase === 'INTRO') && (
                             <MemoVoiceCommsOverlay 

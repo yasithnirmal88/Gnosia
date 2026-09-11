@@ -429,6 +429,39 @@ export const useGame = (initialRoomCode: string) => {
 
   const startGame = useCallback(() => publish('start', {}), [publish]);
 
+  const setReady = useCallback((ready: boolean) => {
+    if (stompClient.current?.connected && roomCodeRef.current) {
+      stompClient.current.publish({
+        destination: `/app/room/${roomCodeRef.current}/ready`,
+        body: JSON.stringify({ ready }),
+      });
+    }
+  }, []);
+
+  const leaveRoom = useCallback(() => {
+    const client = stompClient.current;
+    if (client?.connected && roomCodeRef.current) {
+      client.publish({
+        destination: `/app/room/${roomCodeRef.current}/leave`,
+        body: JSON.stringify({}),
+      });
+    }
+    // Bump the generation and drop the socket so the leave-confirming room
+    // broadcast (which no longer contains this player) cannot clobber the
+    // reset below.
+    connectGenRef.current += 1;
+    client?.deactivate();
+    localStorage.removeItem('gnosia_room_code');
+    roomCodeRef.current = '';
+    resetConversation();
+    setRoom(null);
+    setJoinError(null);
+    setActionError(null);
+    setScanResult(null);
+    setDoctorResult(null);
+    setPrivateInfo(null);
+  }, [resetConversation, setRoom]);
+
   const createRoom = useCallback((roomCodeStr: string, participants: number, pin: string) => {
     if (stompClient.current?.connected) {
       stompClient.current.publish({
@@ -457,6 +490,8 @@ export const useGame = (initialRoomCode: string) => {
     doctorCheck,
     kill,
     startGame,
+    setReady,
+    leaveRoom,
     createRoom,
     playerId,
     joinError,

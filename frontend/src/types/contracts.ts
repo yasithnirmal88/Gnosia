@@ -44,11 +44,15 @@ export interface Player {
   cryoslept?: boolean;
   votedFor?: string | null;
   connected?: boolean;
+  /** Lobby readiness flag (only meaningful during LOBBY). */
+  ready?: boolean;
 }
 
 /** GameConfig.java */
 export interface GameConfig {
   maxPlayers: number;
+  /** Minimum crew needed to depart once everyone is ready. */
+  minPlayers?: number;
   /** 0 means auto-assigned by the server. */
   gnosiaCount?: number;
   votingTimeSeconds?: number;
@@ -104,6 +108,10 @@ export type VotingRound = Record<string, string>;
 /** RoomResponse.java */
 export interface Room {
   roomCode: string;
+  /** Player ID of the lobby host (null once the vessel departs). */
+  hostId?: string | null;
+  /** Lobby join PIN, exposed so the host can share the invite. */
+  pin?: string;
   players: Player[];
   gameState: GameState;
   analytics?: GameAnalytics | null;

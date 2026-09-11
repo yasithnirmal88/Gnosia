@@ -21,16 +21,17 @@ test('15-player room fills to capacity and commences into INTRO', async ({ page 
   await expect(page.getByText(/CREW: 15/)).toBeVisible()
 }, { tag: '@e2e' })
 
-test('full lobby blocks the COMMENCE button until capacity', async ({ page }) => {
+test('host start is gated until the crew is ready', async ({ page }) => {
   await createRoom(page, 15)
 
   // Default game size is 5; a fresh 15-max lobby is not yet full.
   await expect(page.getByText(/WAITING FOR CREW \(1\/15\)/)).toBeVisible()
 
-  // COMMENCE only exists once the room reaches maxPlayers.
-  await expect(page.getByText('COMMENCE')).toHaveCount(0)
+  // The departure button exists in the host's roster panel but is not
+  // actionable until the vessel is full (or min crew is boarded and ready).
+  await expect(page.getByText('COMMENCE')).toBeDisabled()
 
   await fillBots(page)
   await expect(page.getByText(/CREW: 15/)).toBeVisible()
-  await expect(page.getByText('COMMENCE')).toBeVisible()
+  await expect(page.getByText('COMMENCE')).toBeEnabled()
 }, { tag: '@e2e' })

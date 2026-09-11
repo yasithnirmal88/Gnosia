@@ -36,6 +36,7 @@ export const playerSchema: z.ZodType<Player> = z.object({
   cryoslept: z.boolean().optional(),
   votedFor: z.string().nullable().optional(),
   connected: z.boolean().optional(),
+  ready: z.boolean().optional(),
 }).passthrough();
 
 /** GameState.java. The maps always exist on the DTO; `.default()` also
@@ -62,6 +63,7 @@ export const gameStateSchema: z.ZodType<GameState, z.ZodTypeDef, unknown> = z.ob
 /** GameConfig.java */
 export const gameConfigSchema: z.ZodType<GameConfig> = z.object({
   maxPlayers: z.number(),
+  minPlayers: z.number().optional(),
   gnosiaCount: z.number().optional(),
   votingTimeSeconds: z.number().optional(),
   resultTimeSeconds: z.number().optional(),
@@ -84,6 +86,8 @@ export const gameAnalyticsSchema: z.ZodType<GameAnalytics> = z.object({
 /** RoomResponse.java */
 export const roomSchema: z.ZodType<Room, z.ZodTypeDef, unknown> = z.object({
   roomCode: z.string().min(1),
+  hostId: z.string().nullable().optional(),
+  pin: z.string().optional(),
   players: z.array(playerSchema),
   gameState: gameStateSchema,
   analytics: gameAnalyticsSchema.nullable().optional(),
